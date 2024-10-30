@@ -4,5 +4,7 @@
     "#.*\\.js"
   ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
-  "typescript.preferences.importModuleSpecifierEnding": "js"
+  "typescript.preferences.importModuleSpecifierEnding": "js",
+  "cSpell.files": ["**/*"],
+  "cSpell.words": ["Deno", "pluggable"]
 }
