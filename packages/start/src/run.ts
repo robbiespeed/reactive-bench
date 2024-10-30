@@ -11,7 +11,6 @@ import { garbageCollect } from "@reactive-bench/core/gc.ts";
 import {
   getProcessedGroupRecords,
   type BenchmarkRecord,
-  type ProcessedRecord,
 } from "@reactive-bench/core/stats.ts";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -131,6 +130,10 @@ const frameworkConfigs: FrameworkConfig[] = [
     //     { key: "eager" },
     //   ],
     // },
+  },
+  {
+    name: "metron",
+    path: "#lib/frameworks/metron",
   },
   {
     name: "mobx",
