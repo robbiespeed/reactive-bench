@@ -1,0 +1,12 @@
+# Directories
+node_modules
+.pnpm-store
+.nyc_output
+/coverage
+/notes
+/packages/*/lib
+/frameworks/*/lib
+
+# Files
+tsconfig.tsbuildinfo
+tsconfig.*.tsbuildinfo

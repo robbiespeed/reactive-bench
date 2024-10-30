@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "@reactive-bench/core/": "./packages/core/src/",
+    "@reactive-bench/start/": "./packages/start/src/"
+  },
+  "scopes": {
+    "./packages/start/src/": {
+      "#lib/": "./packages/start/src/"
+    },
+    "./packages/core/src/": {
+      "#lib/": "./packages/core/src/"
+    }
+  },
+  "unstable": ["sloppy-imports"]
+}

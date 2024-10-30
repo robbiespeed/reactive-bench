@@ -1,0 +1,42 @@
+{
+  "name": "@reactive-bench/start",
+  "version": "0.1.0",
+  "description": "",
+  "main": "lib/run.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "reactive",
+    "reactivity",
+    "benchmark",
+    "signals"
+  ],
+  "contributors": [
+    "Robbie Speed <robert.y.speed@gmail.com> (https://github.com/robbiespeed)"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./*.ts": {
+      "types": "./lib/*.d.ts",
+      "default": "./lib/*.js",
+      "@typescript/source": "./src/*.ts"
+    },
+    "./internal/*": null,
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#lib/*": {
+      "types": "./lib/*.d.ts",
+      "default": "./lib/*.js",
+      "@typescript/source": "./src/*.ts"
+    }
+  },
+  "dependencies": {
+    "@reactive-bench/core": "workspace:*",
+    "alien-signals": "^0.2.0",
+    "mobx": "^6.13.5"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "typescript.preferences.autoImportSpecifierExcludeRegexes": [
+    "\\.{1,2}/.*",
+    "#.*\\.js"
+  ],
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "typescript.preferences.importModuleSpecifierEnding": "js"
+}

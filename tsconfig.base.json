@@ -1,0 +1,27 @@
+{
+  "include": [],
+  "exclude": [],
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": [],
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "verbatimModuleSyntax": true,
+    "composite": true,
+    "customConditions": ["@typescript/source"],
+    "isolatedModules": true,
+    "esModuleInterop": false,
+    "allowJs": false,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitOverride": true,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "useDefineForClassFields": true,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
