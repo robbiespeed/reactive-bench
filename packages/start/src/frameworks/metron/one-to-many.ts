@@ -24,6 +24,7 @@ export const component: OneToManyComponent = ({
       row.push(lastRead);
     }
     if (!noEffects) {
+      recordResult(y, lastRead.unwrap());
       disposers.push(
         channel.subscribe(lastRead, () => {
           recordResult(y, lastRead.unwrap());

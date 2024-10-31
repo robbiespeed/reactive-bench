@@ -166,57 +166,48 @@ export class Orb<TData = unknown> {
   static #propagate(consumers: LinkArray): undefined {
     Orb.#canStartPropagation = false;
     const propagatedNodeIds = Orb.#propagatedNodeIds;
-    let links = consumers;
+    let links: undefined | LinkArray = consumers;
     const linkStack: LinkArray[] = Orb.#propagationLinkStack;
-    let i = links.length - 1;
-    while (i >= 0) {
-      const link = links[i]!;
+    // let i = links.length - 1;
+    // while (i >= 0) {
+    let j = 0;
+    while (links) {
+      for (let i = 0; i < links.length; i++) {
+        const link = links[i]!;
 
-      if (!propagatedNodeIds.has(link.consumerId)) {
-        const consumerRef = link.consumer;
-        const consumer = consumerRef.deref();
+        if (!propagatedNodeIds.has(link.consumerId)) {
+          const consumerRef = link.consumer;
+          const consumer = consumerRef.deref();
 
-        if (consumer !== undefined) {
-          const versionBefore = consumer.#version;
-          const isDynamicallyLinked = link.consumerVersion === versionBefore;
-          if (isDynamicallyLinked || link.consumerVersion === Infinity) {
-            propagatedNodeIds.add(link.consumerId);
-            if (consumer.#safeIntercept()) {
-              if (++consumer.#version >= MAX_VERSION) {
-                consumer.#rollVersion();
-              } else {
-                scheduledNodeSourceTrims.add(consumerRef);
-              }
-              if (isDynamicallyLinked) {
-                link.source = undefined;
-              }
-
-              const consumerConsumers = consumer.#consumerLinks;
-              if (consumerConsumers.length) {
-                if (i > 0) {
-                  linkStack.push(consumerConsumers);
+          if (consumer !== undefined) {
+            const versionBefore = consumer.#version;
+            const isDynamicallyLinked = link.consumerVersion === versionBefore;
+            if (isDynamicallyLinked || link.consumerVersion === Infinity) {
+              propagatedNodeIds.add(link.consumerId);
+              if (consumer.#safeIntercept()) {
+                if (++consumer.#version >= MAX_VERSION) {
+                  consumer.#rollVersion();
                 } else {
-                  links = consumerConsumers;
-                  i = consumerConsumers.length - 1;
-                  continue;
+                  scheduledNodeSourceTrims.add(consumerRef);
+                }
+                if (isDynamicallyLinked) {
+                  link.source = undefined;
+                }
+
+                const consumerConsumers = consumer.#consumerLinks;
+                if (consumerConsumers.length) {
+                  linkStack.push(consumerConsumers);
                 }
               }
             }
+          } else {
+            removeLinkFromConsumerLinks(link, links);
           }
-        } else {
-          removeLinkFromConsumerLinks(link, links);
         }
       }
-
-      i--;
-      if (i < 0) {
-        const nextLinks = linkStack.pop();
-        if (nextLinks) {
-          links = nextLinks;
-          i = links.length - 1;
-        }
-      }
+      links = linkStack[j++];
     }
+
     Orb.#propagatedNodeIds = new Set<string>();
     linkStack.length = 0;
     Orb.#canStartPropagation = true;
@@ -245,13 +236,10 @@ export class Orb<TData = unknown> {
 
   static #flushQueue() {
     const queue = this.#postPropagationQueue;
-    // Begin new queue, so only tasks scheduled before flush get executed.
     this.#postPropagationQueue = [];
-
-    let handler = queue.pop();
-    while (handler !== undefined) {
-      handler();
-      handler = queue.pop();
+    const count = queue.length;
+    for (let i = 0; i < count; i++) {
+      queue[i]!();
     }
   }
 

@@ -1,10 +1,6 @@
 import { createBenchmarkRunner } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
-
-export interface TableItem {
-  id: string;
-  value: string;
-}
+import { fib } from "#lib/math";
 
 export interface TableModel {
   items: TableItem[];
@@ -12,6 +8,20 @@ export interface TableModel {
   readonly onClear: (cb: () => undefined) => undefined;
   readonly onRemove: (cb: (i: number) => undefined) => undefined;
   readonly onSwap: (cb: (a: number, b: number) => undefined) => undefined;
+}
+
+export class TableItem {
+  #brand = true;
+  id: number;
+  label: string;
+  constructor(id: number, label: string) {
+    this.id = id;
+    this.label = label;
+    fib(10);
+  }
+  static isTableItem(item: {}): item is TableItem {
+    return #brand in item;
+  }
 }
 
 export interface ExternalTableController {
@@ -64,7 +74,7 @@ export interface TableProps {
 
 export interface TableRowDatum {
   id: number;
-  value: number;
+  label: string;
 }
 
 export interface TableController extends Controller {

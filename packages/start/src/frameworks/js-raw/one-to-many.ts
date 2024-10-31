@@ -17,7 +17,8 @@ export const component: OneToManyComponent = ({
         const yRow: number[] = [lastValue];
         bodyCache.push(yRow);
         for (let x = 1; x < xSize; x++) {
-          yRow.push(lastValue + x);
+          lastValue = lastValue + x;
+          yRow.push(lastValue);
         }
       }
     }
@@ -26,14 +27,14 @@ export const component: OneToManyComponent = ({
 
   const recordResults = (): undefined => {
     const body = getBody();
-    const lastY = xSize - 1;
+    const rowEnd = xSize - 1;
     for (let y = 0; y < ySize; y++) {
       const yRow = body[y]!;
-      recordResult(y, yRow[lastY]!);
+      recordResult(y, yRow[rowEnd]!);
     }
   };
 
-  let isRecordDeferred = false;
+  let isRecordDeferred = true;
   const runDeferred = noEffects
     ? undefined
     : (): undefined => {

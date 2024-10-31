@@ -9,10 +9,14 @@
     "bench:node": "node --expose-gc ./bench.js",
     "bench-build:bun": "pnpm run build && pnpm run bench:bun",
     "bench-build:node": "pnpm run build && pnpm run bench:node",
+    "test": "deno run --v8-flags=-expose_gc --allow-env --allow-read=./packages ./test.js",
+    "test:bun": "bun run ./test.js",
+    "test:node": "node --expose-gc ./test.js",
+    "test-build:bun": "pnpm run build && pnpm run test:bun",
+    "test-build:node": "pnpm run build && pnpm run test:node",
     "build": "pnpm run build:clean && tsc -b tsconfig.build.json",
     "build:watch": "pnpm run build:clean && tsc -b --watch tsconfig.build.json",
-    "build:clean": "tsc -b --clean tsconfig.build.json && rm -rf ./packages/*/lib",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:clean": "tsc -b --clean tsconfig.build.json && rm -rf ./packages/*/lib"
   },
   "keywords": [],
   "contributors": [

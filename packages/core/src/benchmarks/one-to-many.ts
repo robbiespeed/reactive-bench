@@ -4,8 +4,6 @@ import type { Component, Controller } from "#lib/component";
 export interface OneToManyParams {
   xSize: number;
   ySize: number;
-  minWrite: number;
-  maxWrite: number;
   noEffects?: boolean;
 }
 
@@ -36,10 +34,9 @@ export const oneToMany = createBenchmarkRunner({
     }),
   preRun: (controller) => {
     controller.writeInput(-1);
+    controller.getBody();
   },
-  run: (controller, { minWrite, maxWrite }: OneToManyParams) => {
-    for (let v = minWrite; v < maxWrite; v++) {
-      controller.writeInput(v);
-    }
+  run: (controller) => {
+    controller.writeInput(2);
   },
 });

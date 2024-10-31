@@ -1,13 +1,15 @@
-import { scheduler, wrapDefer } from "#lib/frameworks/mobx/utils";
-import type { TableComponent } from "@reactive-bench/core/benchmarks/table.ts";
+import {
+  TableItem,
+  type TableComponent,
+} from "@reactive-bench/core/benchmarks/table.ts";
 import { action, autorun, observable, type IObservableValue } from "mobx";
 
 interface Item {
   id: number;
-  value: IObservableValue<number>;
+  label: IObservableValue<string>;
 }
 
-export const eager: TableComponent = ({ table }) => {
+export const component: TableComponent = ({ table }) => {
   let nextId = 0;
   const data = observable.array<Item>([]);
   table.onClear(
@@ -23,7 +25,7 @@ export const eager: TableComponent = ({ table }) => {
         return;
       }
       for (let i = 0; i < n; i++) {
-        data.push({ id: nextId++, value: observable.box(i) });
+        data.push({ id: nextId++, label: observable.box(`${i}`) });
       }
     })
   );
@@ -39,21 +41,13 @@ export const eager: TableComponent = ({ table }) => {
       data[b] = tmp;
     })
   );
-  const disposer = autorun(
-    () => {
-      table.items = data.map((row) => ({
-        id: row.id.toString(),
-        value: row.value.get().toString(),
-      }));
-    },
-    { scheduler }
-  );
+  const disposer = autorun(() => {
+    table.items = data.map((row) => new TableItem(row.id, row.label.get()));
+  });
   return {
     cleanup: () => {
       disposer();
     },
-    getData: () => data.map((row) => ({ id: row.id, value: row.value.get() })),
+    getData: () => data.map((row) => ({ id: row.id, label: row.label.get() })),
   };
 };
-
-export const component = wrapDefer(eager);

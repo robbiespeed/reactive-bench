@@ -2,14 +2,14 @@ import { stateArray } from "#lib/frameworks/metron/lib/collections/array";
 import { deriveArray } from "#lib/frameworks/metron/lib/collections/array/derived";
 import { state, type StateAtom } from "#lib/frameworks/metron/lib/state";
 import { channel } from "#lib/frameworks/metron/runtime";
-import type {
-  TableComponent,
+import {
   TableItem,
+  type TableComponent,
 } from "@reactive-bench/core/benchmarks/table.ts";
 
 interface Item {
   id: number;
-  value: StateAtom<number>;
+  label: StateAtom<string>;
 }
 
 export const component: TableComponent = ({ table }) => {
@@ -24,9 +24,9 @@ export const component: TableComponent = ({ table }) => {
     if (n === 0) {
       return;
     }
-    const freshData = [];
+    const freshData: Item[] = [];
     for (let i = 0; i < n; i++) {
-      freshData.push({ id: nextId++, value: state(i) });
+      freshData.push({ id: nextId++, label: state(`${i}`) });
     }
     data.append(freshData);
   });
@@ -36,10 +36,10 @@ export const component: TableComponent = ({ table }) => {
   table.onSwap((a, b) => {
     data.swap(a, b);
   });
-  const displayedItems = deriveArray(data, (row, read) => ({
-    id: row.id.toString(),
-    value: read(row.value).toString(),
-  }));
+  const displayedItems = deriveArray(
+    data,
+    (row, read) => new TableItem(row.id, read(row.label))
+  );
   const disposer = channel.subscribe(data, () => {
     table.items = displayedItems.unwrap() as TableItem[];
   });
@@ -51,6 +51,6 @@ export const component: TableComponent = ({ table }) => {
       channel.run();
     },
     getData: () =>
-      data.unwrap().map((row) => ({ id: row.id, value: row.value.unwrap() })),
+      data.unwrap().map((row) => ({ id: row.id, label: row.label.unwrap() })),
   };
 };

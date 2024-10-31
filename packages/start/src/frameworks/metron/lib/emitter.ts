@@ -61,15 +61,20 @@ export class Emitter implements Emittable {
     }
     run(): void {
       const queue = this.#queue;
-      let item = queue.pop();
-      while (item !== undefined) {
+      const count = queue.length;
+      for (let i = 0; i < count; i++) {
+        const item = queue[i]!;
         item.canQueue = true;
         try {
           item.handler();
         } catch (err) {
           this.#errorHandler(err);
         }
-        item = queue.pop();
+      }
+      if (count < queue.length) {
+        queue.splice(0, queue.length - count);
+      } else {
+        queue.length = 0;
       }
     }
     static #disposer(this: Emitter, sub: Subscription): undefined {

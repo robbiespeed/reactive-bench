@@ -8,9 +8,11 @@ export const component: DiamondComponent = ({ recordResult, size }) => {
   const head = state(-1);
   const body: Atom<number>[] = [];
   for (let n = 0; n < size; n++) {
-    body.push(derive(() => head.unwrap() * n));
+    body.push(derive((read) => read(head) * n));
   }
-  const sum = derive((read) => body.reduce((a, s) => a + read(s), 0));
+  const sum = derive((read) => body.reduce((acc, atom) => acc + read(atom), 0));
+
+  recordResult(sum.unwrap());
   const disposer = channel.subscribe(sum, () => {
     recordResult(sum.unwrap());
   });

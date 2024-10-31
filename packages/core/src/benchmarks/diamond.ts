@@ -3,8 +3,6 @@ import type { Component, Controller } from "#lib/component";
 
 export interface DiamondParams {
   size: number;
-  minWrite: number;
-  maxWrite: number;
 }
 
 export interface DiamondController extends Controller {
@@ -28,10 +26,9 @@ export const diamond = createBenchmarkRunner({
     }),
   preRun: (controller) => {
     controller.writeInput(-1);
+    controller.getBody();
   },
-  run: (controller, { minWrite, maxWrite }: DiamondParams) => {
-    for (let v = minWrite; v < maxWrite; v++) {
-      controller.writeInput(v);
-    }
+  run: (controller) => {
+    controller.writeInput(15);
   },
 });

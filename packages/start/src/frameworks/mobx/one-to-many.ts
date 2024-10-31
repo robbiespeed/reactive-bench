@@ -7,9 +7,8 @@ import {
   type IObservableValue,
   type IReactionDisposer,
 } from "mobx";
-import { scheduler, wrapDefer } from "#lib/frameworks/mobx/utils";
 
-export const eager: OneToManyComponent = ({
+export const component: OneToManyComponent = ({
   recordResult,
   xSize,
   ySize,
@@ -29,12 +28,9 @@ export const eager: OneToManyComponent = ({
     }
     if (!noEffects) {
       disposers.push(
-        autorun(
-          () => {
-            recordResult(y, lastRead.get());
-          },
-          { scheduler }
-        )
+        autorun(() => {
+          recordResult(y, lastRead.get());
+        })
       );
     }
   }
@@ -55,5 +51,3 @@ export const eager: OneToManyComponent = ({
     },
   };
 };
-
-export const component = wrapDefer(eager);

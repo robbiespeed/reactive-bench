@@ -1,6 +1,6 @@
-import { ORB, type Atom } from '../atom.js';
-import { type Orb } from '../orb.js';
-import { ExpiredReadError } from '../shared.js';
+import { ORB, type Atom } from "../atom.js";
+import { type Orb } from "../orb.js";
+import { ExpiredReadError } from "../shared.js";
 
 export function bindableRead<T>(this: Orb<unknown>, atom: Atom<T>): T {
   atom[ORB].linkReceiver(this);
@@ -8,7 +8,7 @@ export function bindableRead<T>(this: Orb<unknown>, atom: Atom<T>): T {
 }
 
 export function unexpectedRead(atom: Atom<unknown>): never {
-  throw new Error('Unexpected read');
+  throw new Error("Unexpected read");
 }
 
 // TODO benchmark making this a class w #receiver and bindable read a arrow fn

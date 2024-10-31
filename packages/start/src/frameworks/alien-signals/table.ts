@@ -1,10 +1,13 @@
 import { wrap, wrapDefer } from "#lib/frameworks/alien-signals/utils";
-import type { TableComponent } from "@reactive-bench/core/benchmarks/table.ts";
-import { effect, Signal, signal } from "alien-signals";
+import {
+  TableItem,
+  type TableComponent,
+} from "@reactive-bench/core/benchmarks/table.ts";
+import { effect, endBatch, Signal, signal, startBatch } from "alien-signals";
 
 interface Item {
   id: number;
-  value: Signal<number>;
+  label: Signal<string>;
 }
 
 const unwrapped: TableComponent = ({ table }) => {
@@ -21,7 +24,7 @@ const unwrapped: TableComponent = ({ table }) => {
     }
     const nextData = [...data.get()];
     for (let i = 0; i < n; i++) {
-      nextData.push({ id: nextId++, value: signal(i) });
+      nextData.push({ id: nextId++, label: signal(`${i}`) });
     }
     data.set(nextData);
   });
@@ -36,14 +39,13 @@ const unwrapped: TableComponent = ({ table }) => {
     data.set(nextData);
   });
   effect(() => {
-    table.items = data.get().map((row) => ({
-      id: row.id.toString(),
-      value: row.value.get().toString(),
-    }));
+    table.items = data
+      .get()
+      .map((row) => new TableItem(row.id, row.label.get()));
   });
   return {
     getData: () =>
-      data.get().map((row) => ({ id: row.id, value: row.value.get() })),
+      data.get().map((row) => ({ id: row.id, label: row.label.get() })),
   };
 };
 

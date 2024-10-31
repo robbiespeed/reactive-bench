@@ -1,7 +1,7 @@
-import { EMITTER, Atom, ORB } from './atom.js';
-import { Emitter, createEmitter } from './emitter.js';
-import { Orb, createTransmitterOrb } from './orb.js';
-import { emptyFn } from './shared.js';
+import { EMITTER, Atom, ORB } from "./atom.js";
+import { Emitter, createEmitter } from "./emitter.js";
+import { Orb, createTransmitterOrb } from "./orb.js";
+import { emptyFn } from "./shared.js";
 
 const { runSettledCallbacks } = Orb;
 

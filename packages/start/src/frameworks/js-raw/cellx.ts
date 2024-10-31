@@ -38,15 +38,14 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
 
   const recordResults = (): undefined => {
     const body = getState();
-    for (let y = 0; y < ySize; y++) {
-      const yRow = body[y]!;
-      for (let x = 0; x < xSize; x++) {
-        recordResult(x, y, yRow[x]!);
+    for (let x = 0; x < xSize; x++) {
+      for (let y = 0; y < ySize; y++) {
+        recordResult(x, y, body[y]![x]!);
       }
     }
   };
 
-  let isRecordDeferred = false;
+  let isRecordDeferred = true;
   const runDeferred = (): undefined => {
     if (isRecordDeferred) {
       recordResults();

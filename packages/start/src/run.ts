@@ -1,12 +1,9 @@
+import { benchmarkConfigs, frameworkConfigs } from "#lib/config";
 import type { WorkerParams } from "#lib/worker";
 import type {
   BenchmarkResult,
   BenchmarkRunResponse,
 } from "@reactive-bench/core/benchmark.ts";
-import type { CellXParams } from "@reactive-bench/core/benchmarks/cellx.ts";
-import type { DiamondParams } from "@reactive-bench/core/benchmarks/diamond.ts";
-import type { OneToManyParams } from "@reactive-bench/core/benchmarks/one-to-many.ts";
-import type { TableParams } from "@reactive-bench/core/benchmarks/table.ts";
 import { garbageCollect } from "@reactive-bench/core/gc.ts";
 import {
   getProcessedGroupRecords,
@@ -15,135 +12,6 @@ import {
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-
-const benchmarkConfigs: WorkerParams["benchmarkConfig"][] = [
-  {
-    path: "@reactive-bench/core/benchmarks/one-to-many.ts",
-    key: "oneToMany",
-    params: {
-      xSize: 50,
-      ySize: 50,
-      minWrite: 1,
-      maxWrite: 10,
-    } satisfies OneToManyParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/cellx.ts",
-    key: "cellxWriteRowByRow",
-    params: {
-      xSize: 10,
-      ySize: 500,
-      rowWriteCount: 5,
-      minWrite: 1,
-      maxWrite: 10,
-    } satisfies CellXParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/cellx.ts",
-    key: "cellxWriteAll",
-    params: {
-      xSize: 50,
-      ySize: 50,
-      rowWriteCount: 25,
-      minWrite: 1,
-      maxWrite: 10,
-    } satisfies CellXParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/diamond.ts",
-    key: "diamond",
-    params: { size: 100, minWrite: 1, maxWrite: 10 } satisfies DiamondParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/table.ts",
-    key: "tableRun",
-    params: { appendSize: 10_000 } satisfies TableParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/table.ts",
-    key: "tableReplace",
-    params: { appendSize: 10_000 } satisfies TableParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/table.ts",
-    key: "tableRemove",
-    params: { appendSize: 10_000 } satisfies TableParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-  {
-    path: "@reactive-bench/core/benchmarks/table.ts",
-    key: "tableSwap",
-    params: { appendSize: 10_000 } satisfies TableParams,
-    runOptions: {
-      fullCount: 10,
-      taskCount: 20,
-    },
-  },
-];
-
-interface FrameworkConfig {
-  name: string;
-  path: string;
-  componentOverrides?: {
-    [benchmarkPath: string]: { path?: string; key?: string }[];
-  };
-}
-
-const frameworkConfigs: FrameworkConfig[] = [
-  {
-    name: "js-raw",
-    path: "#lib/frameworks/js-raw",
-  },
-  {
-    name: "alien-signals",
-    path: "#lib/frameworks/alien-signals",
-    // componentOverrides: {
-    //   "@reactive-bench/core/benchmarks/cellx.ts": [
-    //     {}, // default
-    //     { key: "eager" },
-    //   ],
-    // },
-  },
-  {
-    name: "metron",
-    path: "#lib/frameworks/metron",
-  },
-  {
-    name: "mobx",
-    path: "#lib/frameworks/mobx",
-    componentOverrides: {
-      // skip table because it's increadibly slow
-      "@reactive-bench/core/benchmarks/table.ts": [],
-    },
-  },
-];
 
 const benchFilter = process.argv[2] || undefined;
 

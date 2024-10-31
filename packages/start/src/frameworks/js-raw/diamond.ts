@@ -23,7 +23,7 @@ export const component: DiamondComponent = ({ recordResult, size }) => {
     return sumCache;
   };
 
-  let isRecordDeferred = false;
+  let isRecordDeferred = true;
   const runDeferred = (): undefined => {
     if (isRecordDeferred) {
       recordResult(getSum());

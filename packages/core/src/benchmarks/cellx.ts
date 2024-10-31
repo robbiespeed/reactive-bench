@@ -4,8 +4,11 @@ import type { Component, Controller } from "#lib/component";
 export interface CellXParams {
   xSize: number;
   ySize: number;
-  minWrite: number;
-  maxWrite: number;
+}
+
+export interface CellXRowByRowParams extends CellXParams {
+  xSize: number;
+  ySize: number;
   rowWriteCount: number;
 }
 
@@ -30,32 +33,31 @@ const setup = (component: CellXComponent, { xSize, ySize }: CellXParams) =>
     ySize,
   });
 
-const preRun = (controller: CellXController): undefined => {
+const preRun = (
+  controller: CellXController,
+  { ySize }: CellXParams
+): undefined => {
   controller.writeAll(-1);
+  for (let y = 0; y < ySize; y++) {
+    controller.getRow(y);
+  }
 };
 
 export const cellxWriteRowByRow = createBenchmarkRunner({
-  setup,
+  setup: setup,
   preRun: preRun,
-  run: (
-    { writeRow, getRow },
-    { minWrite, maxWrite, rowWriteCount }: CellXParams
-  ) => {
+  run: ({ writeRow, getRow }, { rowWriteCount }: CellXRowByRowParams) => {
     for (let y = 0; y < rowWriteCount; y++) {
-      for (let v = minWrite; v < maxWrite; v++) {
-        writeRow(y, v);
-      }
+      writeRow(y, 10);
       getRow(y);
     }
   },
 });
 
 export const cellxWriteAll = createBenchmarkRunner({
-  setup,
+  setup: setup,
   preRun: preRun,
-  run: ({ writeAll }, { minWrite, maxWrite }: CellXParams) => {
-    for (let v = minWrite; v < maxWrite; v++) {
-      writeAll(v);
-    }
+  run: ({ writeAll }) => {
+    writeAll(20);
   },
 });

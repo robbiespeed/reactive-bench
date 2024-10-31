@@ -1,4 +1,3 @@
-import { scheduler, wrapDefer } from "#lib/frameworks/mobx/utils";
 import type { CellXComponent } from "@reactive-bench/core/benchmarks/cellx.ts";
 import {
   autorun,
@@ -9,19 +8,16 @@ import {
   type IReactionDisposer,
 } from "mobx";
 
-export const eager: CellXComponent = ({ recordResult, xSize, ySize }) => {
+export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
   const disposers: IReactionDisposer[] = [];
   const body: IObservableValue<number>[][] = [];
   const sources: IObservableValue<number>[] = [];
   for (let y = 0; y < ySize; y++) {
     const source = observable.box(-1);
     disposers.push(
-      autorun(
-        () => {
-          recordResult(0, y, source.get());
-        },
-        { scheduler }
-      )
+      autorun(() => {
+        recordResult(0, y, source.get());
+      })
     );
     const yRow: IObservableValue<number>[] = [source];
     sources.push(source);
@@ -34,12 +30,9 @@ export const eager: CellXComponent = ({ recordResult, xSize, ySize }) => {
     const prevLayer = layer;
     const top = computed(() => prevLayer[1]!.get());
     disposers.push(
-      autorun(
-        () => {
-          recordResult(x, 0, top.get());
-        },
-        { scheduler }
-      )
+      autorun(() => {
+        recordResult(x, 0, top.get());
+      })
     );
     body[0]!.push(top);
     layer = [top];
@@ -50,24 +43,18 @@ export const eager: CellXComponent = ({ recordResult, xSize, ySize }) => {
         y % 2 === 0 ? () => a.get() + b.get() : () => a.get() - b.get()
       );
       disposers.push(
-        autorun(
-          () => {
-            recordResult(x, y, c.get());
-          },
-          { scheduler }
-        )
+        autorun(() => {
+          recordResult(x, y, c.get());
+        })
       );
       body[y]!.push(c);
       layer.push(c);
     }
     const bottom = computed(() => prevLayer[bottomY - 1]!.get());
     disposers.push(
-      autorun(
-        () => {
-          recordResult(x, bottomY, bottom.get());
-        },
-        { scheduler }
-      )
+      autorun(() => {
+        recordResult(x, bottomY, bottom.get());
+      })
     );
     body[bottomY]!.push(bottom);
     layer.push(bottom);
@@ -96,5 +83,3 @@ export const eager: CellXComponent = ({ recordResult, xSize, ySize }) => {
     },
   };
 };
-
-export const component = wrapDefer(eager);

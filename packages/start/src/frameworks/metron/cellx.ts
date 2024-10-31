@@ -11,6 +11,7 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
   const sources: StateAtom<number>[] = [];
   for (let y = 0; y < ySize; y++) {
     const source = state(-1);
+    recordResult(0, y, source.unwrap());
     disposers.push(
       channel.subscribe(source, () => {
         recordResult(0, y, source.unwrap());
@@ -26,6 +27,7 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
   for (let x = 1; x < xSize; x++) {
     const prevLayer = layer;
     const top = derive((read) => read(prevLayer[1]!));
+    recordResult(x, 0, top.unwrap());
     disposers.push(
       channel.subscribe(top, () => {
         recordResult(x, 0, top.unwrap());
@@ -39,6 +41,7 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
       const c = derive(
         y % 2 === 0 ? (read) => read(a) + read(b) : (read) => read(a) - read(b)
       );
+      recordResult(x, y, c.unwrap());
       disposers.push(
         channel.subscribe(c, () => {
           recordResult(x, y, c.unwrap());
@@ -48,6 +51,7 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
       layer.push(c);
     }
     const bottom = derive((read) => read(prevLayer[bottomY - 1]!));
+    recordResult(x, bottomY, bottom.unwrap());
     disposers.push(
       channel.subscribe(bottom, () => {
         recordResult(x, bottomY, bottom.unwrap());

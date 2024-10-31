@@ -1,9 +1,9 @@
-import { EMITTER, Atom, ORB, type AtomReader } from './atom.js';
-import { emptyCacheToken, type EmptyCacheToken } from './cache.js';
-import { createEmitter, type Emitter } from './emitter.js';
-import { bindableRead, unexpectedRead } from './internal/read.js';
-import { createRelayOrb, type Orb } from './orb.js';
-import { emptyFn } from './shared.js';
+import { EMITTER, Atom, ORB, type AtomReader } from "./atom.js";
+import { emptyCacheToken, type EmptyCacheToken } from "./cache.js";
+import { createEmitter, type Emitter } from "./emitter.js";
+import { bindableRead, unexpectedRead } from "./internal/read.js";
+import { createRelayOrb, type Orb } from "./orb.js";
+import { emptyFn } from "./shared.js";
 
 export class DerivedAtom<TValue> extends Atom<TValue> {
   #orb!: Orb<DerivedAtom<TValue>>;

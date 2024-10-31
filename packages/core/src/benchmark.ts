@@ -29,7 +29,7 @@ export interface BenchmarkRunner<TComponent extends Component<any>, TParams> {
   ): Promise<BenchmarkRunResponse>;
 }
 
-export interface BenchmarkConfig<
+export interface BenchmarkRunnerConfig<
   TComponent extends Component<any>,
   TParams,
   TRunController extends Controller
@@ -50,7 +50,7 @@ export function createBenchmarkRunner<
   TParams,
   TRunController extends Controller
 >(
-  config: BenchmarkConfig<TComponent, TParams, TRunController>
+  config: BenchmarkRunnerConfig<TComponent, TParams, TRunController>
 ): BenchmarkRunner<TComponent, TParams> {
   return async (
     Component,
