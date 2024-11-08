@@ -1,10 +1,10 @@
 import { wrap, wrapDefer } from "#lib/frameworks/alien-signals/utils";
 import type { TableComponent } from "@reactive-bench/core/benchmarks/table.ts";
-import { effect, Signal, signal } from "alien-signals";
+import { effect, type ISignal, signal } from "alien-signals";
 
 interface Item {
   id: number;
-  value: Signal<number>;
+  value: ISignal<number>;
 }
 
 const unwrapped: TableComponent = ({ table }) => {
