@@ -1,18 +1,18 @@
 import { wrap, wrapDefer } from "#lib/frameworks/alien-signals/utils";
 import type { CellXComponent } from "@reactive-bench/core/benchmarks/cellx.ts";
 import {
-  Signal,
   computed,
   effect,
   endBatch,
   signal,
   startBatch,
   type ISignal,
+  type IWritableSignal,
 } from "alien-signals";
 
 const unwrapped: CellXComponent = ({ recordResult, xSize, ySize }) => {
   const body: ISignal<number>[][] = [];
-  const sources: Signal<number>[] = [];
+  const sources: IWritableSignal<number>[] = [];
   for (let y = 0; y < ySize; y++) {
     const source = signal(-1);
     effect(() => {
