@@ -3,11 +3,11 @@ import {
   TableItem,
   type TableComponent,
 } from "@reactive-bench/core/benchmarks/table.ts";
-import { effect, endBatch, Signal, signal, startBatch } from "alien-signals";
+import { effect, signal, type ISignal } from "alien-signals";
 
 interface Item {
   id: number;
-  label: Signal<string>;
+  label: ISignal<string>;
 }
 
 const unwrapped: TableComponent = ({ table }) => {

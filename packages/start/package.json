@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@reactive-bench/core": "workspace:*",
-    "alien-signals": "^0.2.0",
+    "alien-signals": "^0.2.1",
     "mobx": "^6.13.5"
   }
 }

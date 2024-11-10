@@ -1,10 +1,10 @@
 import type { Component } from "@reactive-bench/core/component.ts";
-import { EffectScope, endBatch, startBatch } from "alien-signals";
+import { effectScope, endBatch, startBatch } from "alien-signals";
 
 export function wrap<TComponent extends Component<any>>(
   Component: TComponent
 ): TComponent {
-  const scope = new EffectScope();
+  const scope = effectScope();
   return ((props) => {
     const controller = scope.run(() => Component(props));
     const innerCleanup = controller.cleanup;
@@ -21,7 +21,7 @@ export function wrap<TComponent extends Component<any>>(
 export function wrapDefer<TComponent extends Component<any>>(
   Component: TComponent
 ): TComponent {
-  const scope = new EffectScope();
+  const scope = effectScope();
   return ((props) => {
     const controller = scope.run(() => Component(props));
     const innerCleanup = controller.cleanup;
