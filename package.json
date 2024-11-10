@@ -5,6 +5,7 @@
   "main": "bench.js",
   "scripts": {
     "bench": "deno run --v8-flags=-expose_gc --allow-env --allow-read=./packages ./bench.js",
+    "bench:vitest": "vitest bench",
     "bench:bun": "bun run ./bench.js",
     "bench:node": "node --expose-gc ./bench.js",
     "bench-build:bun": "pnpm run build && pnpm run bench:bun",
@@ -26,8 +27,10 @@
   "private": true,
   "type": "module",
   "devDependencies": {
+    "@reactive-bench/core": "workspace:*",
     "@reactive-bench/start": "workspace:*",
     "@types/node": "^22.7.7",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
   }
 }
