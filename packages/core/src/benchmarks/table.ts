@@ -1,4 +1,4 @@
-import { createBenchmarkRunner } from "#lib/benchmark";
+import { createBenchmark } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
 import { fib } from "#lib/math";
 
@@ -44,7 +44,7 @@ function createEvent<TArgs extends unknown[]>() {
   return [register, emit] as const;
 }
 
-function createTable(): ExternalTableController {
+export function createTable(): ExternalTableController {
   const items: TableItem[] = [];
   const [onAppend, append] = createEvent<[n: number]>();
   const [onClear, clear] = createEvent<[]>();
@@ -96,30 +96,38 @@ const setup = (component: TableComponent) => {
   };
 };
 
-const clearTableInit = (controller: ExternalTableController): undefined => {
+const clearTableInit = (
+  controller: ExternalTableController & TableController
+): undefined => {
   controller.clear();
+  controller.runDeferred?.();
 };
 
-export const tableRun = createBenchmarkRunner({
+export const tableRun = createBenchmark({
   setup,
   preRun: clearTableInit,
   run: (controller, { appendSize }: TableParams) => {
     controller.append(appendSize);
+    controller.runDeferred?.();
   },
 });
 
 const existingTableInit = (
-  controller: ExternalTableController,
+  controller: ExternalTableController & TableController,
   { appendSize }: TableParams
 ): undefined => {
   controller.clear();
   controller.append(appendSize);
+  controller.runDeferred?.();
 };
 
 const createExistingTableRunner = (
-  run: (controller: ExternalTableController, params: TableParams) => undefined
+  run: (
+    controller: ExternalTableController & TableController,
+    params: TableParams
+  ) => undefined
 ) =>
-  createBenchmarkRunner({
+  createBenchmark({
     setup,
     preRun: existingTableInit,
     run,
@@ -128,6 +136,7 @@ const createExistingTableRunner = (
 export const tableAppend = createExistingTableRunner(
   (controller, { appendSize }) => {
     controller.append(appendSize);
+    controller.runDeferred?.();
   }
 );
 
@@ -135,13 +144,16 @@ export const tableReplace = createExistingTableRunner(
   (controller, { appendSize }) => {
     controller.clear();
     controller.append(appendSize);
+    controller.runDeferred?.();
   }
 );
 
 export const tableRemove = createExistingTableRunner((controller) => {
   controller.remove(4);
+  controller.runDeferred?.();
 });
 
 export const tableSwap = createExistingTableRunner((controller) => {
   controller.swap(4, 15);
+  controller.runDeferred?.();
 });

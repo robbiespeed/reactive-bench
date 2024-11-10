@@ -1,46 +1,6 @@
-import type { Component } from "#lib/component";
-import type { FrameworkConfig, TestConfig, TestSuiteItem } from "#lib/config";
-import { basename, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
-
-export interface TestRunner<TComponent extends Component<any>, TParams> {
-  (component: TComponent, params: TParams): Promise<true | Error>;
-}
-
-export function createTestRunner<TComponent extends Component<any>, TParams>(
-  run: (Component: TComponent, params: TParams) => undefined
-): TestRunner<TComponent, TParams> {
-  return async (Component, params) => {
-    try {
-      run(Component, params);
-    } catch (cause) {
-      return new Error("Test failure", { cause });
-    }
-    return true;
-  };
-}
-
-function getWorkerPath() {
-  const selfDirname = dirname(fileURLToPath(import.meta.url));
-  return join(
-    selfDirname,
-    selfDirname.endsWith("src") ? "test-worker.ts" : "test-worker.js"
-  );
-}
-
-async function runWorker(workerData: TestSuiteItem) {
-  const workerPath = getWorkerPath();
-  const worker = new Worker(workerPath, { workerData });
-
-  const response: Error | true | undefined = await new Promise((resolve) => {
-    worker.once("message", resolve);
-  });
-
-  await worker.terminate();
-
-  return response;
-}
+import type { FrameworkConfig, TestConfig } from "#lib/config";
+import { runWorker } from "#lib/worker-utils";
+import { basename, join } from "node:path";
 
 function logTestResponse(response: Error | true | undefined, testName: string) {
   if (response === true) {
@@ -53,48 +13,41 @@ function logTestResponse(response: Error | true | undefined, testName: string) {
   }
 }
 
+export interface RunTestSuiteOptions {
+  testFilter?: (name: string) => boolean;
+  frameworkFilter?: (name: string) => boolean;
+  verbose?: boolean;
+}
+
 export async function runTestSuite(
   frameworks: FrameworkConfig[],
-  testConfigs: TestConfig[]
+  testConfigs: TestConfig[],
+  { frameworkFilter, testFilter }: RunTestSuiteOptions = {}
 ) {
   for (const fConfig of frameworks) {
+    if (frameworkFilter ? !frameworkFilter(fConfig.name) : false) {
+      continue;
+    }
     console.log(`Testing Framework: ${fConfig.name}`);
     for (const testConfig of testConfigs) {
-      const benchmarkBasename = basename(testConfig.path);
-      const frameworkPath = fConfig.path;
-      const overrides = fConfig.componentOverrides?.[testConfig.path];
       const testName = testConfig.name;
-      if (overrides === undefined) {
-        const response = await runWorker({
-          componentConfig: {
-            path: join(frameworkPath, benchmarkBasename),
-            key: "component",
-          },
-          testConfig,
-        });
-        logTestResponse(response, testName);
+      if (testFilter ? !testFilter(testName) : false) {
         continue;
       }
-
-      if (overrides.length === 0) {
-        console.log(`${testName}: SKIPPED`);
+      const benchmarkBasename = basename(testConfig.path);
+      if (fConfig.disabledTests?.includes(benchmarkBasename)) {
+        console.log(`${testName}: DISABLED`);
         continue;
       }
-
-      let i = 1;
-      for (const override of overrides) {
-        const overridePath = override.path ?? benchmarkBasename;
-        const overrideKey = override.key ?? "component";
-        const response = await runWorker({
-          componentConfig: {
-            path: join(frameworkPath, overridePath),
-            key: overrideKey,
-          },
-          testConfig,
-        });
-        logTestResponse(response, `${testName} (override: ${i})`);
-        i++;
-      }
+      const frameworkPath = fConfig.path;
+      const response = await runWorker({
+        componentConfig: {
+          path: join(frameworkPath, benchmarkBasename),
+          key: fConfig.componentKey ?? "component",
+        },
+        testConfig,
+      });
+      logTestResponse(response, testName);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { createBenchmarkRunner } from "#lib/benchmark";
+import { createBenchmark } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
 
 export interface DiamondParams {
@@ -18,7 +18,7 @@ export interface DiamondProps {
 
 export type DiamondComponent = Component<DiamondProps, DiamondController>;
 
-export const diamond = createBenchmarkRunner({
+export const diamond = createBenchmark({
   setup: (component: DiamondComponent, { size }: DiamondParams) =>
     component({
       recordResult: () => {},
@@ -27,8 +27,10 @@ export const diamond = createBenchmarkRunner({
   preRun: (controller) => {
     controller.writeInput(-1);
     controller.getBody();
+    controller.runDeferred?.();
   },
   run: (controller) => {
     controller.writeInput(15);
+    controller.runDeferred?.();
   },
 });

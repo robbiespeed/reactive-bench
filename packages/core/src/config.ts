@@ -3,16 +3,17 @@ import type { CellXParams, CellXRowByRowParams } from "#lib/benchmarks/cellx";
 import type { DiamondParams } from "#lib/benchmarks/diamond";
 import type { OneToManyParams } from "#lib/benchmarks/one-to-many";
 import type { TableParams } from "#lib/benchmarks/table";
-import { cellxWriteAllTestCases } from "#lib/tests/cellx";
-import { diamondTestCases } from "#lib/tests/diamond";
-import { oneToManyTestCases } from "#lib/tests/one-to-many";
+import { cellxTestConfigs } from "#lib/tests/cellx";
+import { diamondTestConfigs } from "#lib/tests/diamond";
+import { oneToManyTestConfigs } from "#lib/tests/one-to-many";
+import { tableTestConfigs } from "#lib/tests/table";
 
 export interface FrameworkConfig {
   name: string;
   path: string;
-  componentOverrides?: {
-    [benchmarkPath: string]: { path?: string; key?: string }[];
-  };
+  componentKey?: string;
+  disabledBenchmarks?: string[];
+  disabledTests?: string[];
 }
 
 export interface ComponentConfig {
@@ -140,52 +141,8 @@ export const benchmarkConfigs: BenchmarkConfig[] = [
 ];
 
 export const testConfigs: TestConfig[] = [
-  {
-    name: "cellx (1)",
-    path: "@reactive-bench/core/tests/cellx.ts",
-    key: "cellx",
-    params: cellxWriteAllTestCases[0]!,
-  },
-  {
-    name: "cellx (2)",
-    path: "@reactive-bench/core/tests/cellx.ts",
-    key: "cellx",
-    params: cellxWriteAllTestCases[1]!,
-  },
-  {
-    name: "diamond (1)",
-    path: "@reactive-bench/core/tests/diamond.ts",
-    key: "diamond",
-    params: diamondTestCases[0]!,
-  },
-  {
-    name: "diamond (2)",
-    path: "@reactive-bench/core/tests/diamond.ts",
-    key: "diamond",
-    params: diamondTestCases[1]!,
-  },
-  {
-    name: "one to many (broad 1x6)",
-    path: "@reactive-bench/core/tests/one-to-many.ts",
-    key: "oneToMany",
-    params: oneToManyTestCases[0]!,
-  },
-  {
-    name: "one to many (deep 6x1)",
-    path: "@reactive-bench/core/tests/one-to-many.ts",
-    key: "oneToMany",
-    params: oneToManyTestCases[1]!,
-  },
-  {
-    name: "one to many (3x3)",
-    path: "@reactive-bench/core/tests/one-to-many.ts",
-    key: "oneToMany",
-    params: oneToManyTestCases[2]!,
-  },
-  {
-    name: "one to many (no effects 3x3)",
-    path: "@reactive-bench/core/tests/one-to-many.ts",
-    key: "oneToMany",
-    params: oneToManyTestCases[3]!,
-  },
+  ...cellxTestConfigs,
+  ...diamondTestConfigs,
+  ...oneToManyTestConfigs,
+  ...tableTestConfigs,
 ];

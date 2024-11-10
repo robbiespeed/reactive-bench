@@ -1,4 +1,4 @@
-import { createBenchmarkRunner } from "#lib/benchmark";
+import { createBenchmark } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
 
 export interface CellXParams {
@@ -43,21 +43,26 @@ const preRun = (
   }
 };
 
-export const cellxWriteRowByRow = createBenchmarkRunner({
+export const cellxWriteRowByRow = createBenchmark({
   setup: setup,
   preRun: preRun,
-  run: ({ writeRow, getRow }, { rowWriteCount }: CellXRowByRowParams) => {
+  run: (
+    { writeRow, getRow, runDeferred },
+    { rowWriteCount }: CellXRowByRowParams
+  ) => {
     for (let y = 0; y < rowWriteCount; y++) {
       writeRow(y, 10);
       getRow(y);
     }
+    runDeferred?.();
   },
 });
 
-export const cellxWriteAll = createBenchmarkRunner({
+export const cellxWriteAll = createBenchmark({
   setup: setup,
   preRun: preRun,
-  run: ({ writeAll }) => {
+  run: ({ writeAll, runDeferred }) => {
     writeAll(20);
+    runDeferred?.();
   },
 });

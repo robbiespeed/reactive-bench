@@ -1,4 +1,4 @@
-import { createBenchmarkRunner } from "#lib/benchmark";
+import { createBenchmark } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
 
 export interface OneToManyParams {
@@ -21,7 +21,7 @@ export interface OneToManyProps {
 
 export type OneToManyComponent = Component<OneToManyProps, OneToManyController>;
 
-export const oneToMany = createBenchmarkRunner({
+export const oneToMany = createBenchmark({
   setup: (
     component: OneToManyComponent,
     { xSize, ySize, noEffects = false }: OneToManyParams
@@ -35,8 +35,10 @@ export const oneToMany = createBenchmarkRunner({
   preRun: (controller) => {
     controller.writeInput(-1);
     controller.getBody();
+    controller.runDeferred?.();
   },
   run: (controller) => {
     controller.writeInput(2);
+    controller.runDeferred?.();
   },
 });
