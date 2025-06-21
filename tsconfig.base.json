@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "verbatimModuleSyntax": true,
     "composite": true,
-    "customConditions": ["@typescript/source"],
+    "customConditions": ["@reactive-bench/src"],
     "isolatedModules": true,
     "esModuleInterop": false,
     "allowJs": false,

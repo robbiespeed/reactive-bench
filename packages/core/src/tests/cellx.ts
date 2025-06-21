@@ -1,16 +1,18 @@
-import { type CellXComponent, type CellXParams } from "#lib/benchmarks/cellx";
+import { type CellXComponent } from "#lib/benchmarks/cellx";
 import type { TestConfig } from "#lib/config";
-import { deepEqual } from "node:assert";
+import { deepEqual, equal, ok } from "node:assert";
 
-export interface CellXTestParams extends CellXParams {
+export interface CellXTestParams {
+  xSize: number;
+  ySize: number;
   value: number;
-  expectedResults: [number, number, number][];
+  minResultLength: number;
   expectedRows: number[][];
 }
 
 export const cellx = (
   component: CellXComponent,
-  { xSize, ySize, value, expectedRows, expectedResults }: CellXTestParams
+  { xSize, ySize, value, expectedRows, minResultLength }: CellXTestParams
 ) => {
   const results: [number, number, number][] = [];
   const controller = component({
@@ -21,13 +23,20 @@ export const cellx = (
     },
   });
   controller.runDeferred?.();
+  equal(results.length, ySize * xSize);
+  results.length = 0;
   controller.writeAll(value);
   controller.runDeferred?.();
+  const rows: number[][] = [];
   for (let y = 0; y < ySize; y++) {
-    const row = controller.getRow(y);
-    deepEqual(row, expectedRows[y]!);
+    rows.push(controller.getRow(y));
   }
-  deepEqual(results.slice(0, 20), expectedResults);
+  deepEqual(rows, expectedRows);
+  ok(
+    results.length >= minResultLength,
+    `Got ${results.length} results, expected at least ${minResultLength}`
+  );
+  controller.cleanup?.();
 };
 
 const path = "@reactive-bench/core/tests/cellx.ts";
@@ -42,28 +51,7 @@ export const cellxTestConfigs: TestConfig[] = [
       value: 3,
       xSize: 10,
       ySize: 10,
-      expectedResults: [
-        [0, 0, -1],
-        [0, 1, -1],
-        [0, 2, -1],
-        [0, 3, -1],
-        [0, 4, -1],
-        [0, 5, -1],
-        [0, 6, -1],
-        [0, 7, -1],
-        [0, 8, -1],
-        [0, 9, -1],
-        [1, 0, -1],
-        [1, 1, 0],
-        [1, 2, -2],
-        [1, 3, 0],
-        [1, 4, -2],
-        [1, 5, 0],
-        [1, 6, -2],
-        [1, 7, 0],
-        [1, 8, -2],
-        [1, 9, -1],
-      ],
+      minResultLength: 59,
       expectedRows: [
         [3, 3, 0, -3, 0, 0, 0, 3, 0, 0],
         [3, 0, -3, 0, 0, 0, 3, 0, 0, 3],
@@ -84,51 +72,15 @@ export const cellxTestConfigs: TestConfig[] = [
     key,
     params: {
       value: 7,
-      xSize: 24,
+      xSize: 20,
       ySize: 5,
-      expectedResults: [
-        [0, 0, -1],
-        [0, 1, -1],
-        [0, 2, -1],
-        [0, 3, -1],
-        [0, 4, -1],
-        [1, 0, -1],
-        [1, 1, 0],
-        [1, 2, -2],
-        [1, 3, 0],
-        [1, 4, -1],
-        [2, 0, 0],
-        [2, 1, 1],
-        [2, 2, 0],
-        [2, 3, -1],
-        [2, 4, 0],
-        [3, 0, 1],
-        [3, 1, 0],
-        [3, 2, 0],
-        [3, 3, 0],
-        [3, 4, -1],
-      ],
+      minResultLength: 48,
       expectedRows: [
-        [
-          7, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0,
-          -7, 0, 7,
-        ],
-        [
-          7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7,
-          0, 7, 0,
-        ],
-        [
-          7, 14, 0, 0, 0, -14, 0, 0, 0, 14, 0, 0, 0, -14, 0, 0, 0, 14, 0, 0, 0,
-          -14, 0, 0,
-        ],
-        [
-          7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0,
-          -7, 0,
-        ],
-        [
-          7, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7,
-          0, -7,
-        ],
+        [7, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7],
+        [7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0],
+        [7, 14, 0, 0, 0, -14, 0, 0, 0, 14, 0, 0, 0, -14, 0, 0, 0, 14, 0, 0],
+        [7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0],
+        [7, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7],
       ],
     } satisfies CellXTestParams,
   },

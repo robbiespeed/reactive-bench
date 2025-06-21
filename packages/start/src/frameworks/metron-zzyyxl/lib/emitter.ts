@@ -1,0 +1,97 @@
+import type { Disposer } from "./shared.js";
+
+export const EMITTER = Symbol();
+
+export interface Emittable {
+  readonly [EMITTER]: Emitter;
+}
+
+export type EmitterChannel = InstanceType<typeof EmitterChannel>;
+
+/**
+ * Due to TS bug this needs to be exported
+ * @internal
+ */
+export interface Subscription {
+  canQueue: boolean;
+  handler: () => void;
+  queue: Subscription[];
+  next?: Subscription;
+  prev?: Subscription;
+}
+
+const disposedHandler = () => {};
+
+export class Emitter implements Emittable {
+  #subscriptionHead?: Subscription;
+  get [EMITTER](): this {
+    return this;
+  }
+  emit(): undefined {
+    let item = this.#subscriptionHead;
+    while (item !== undefined) {
+      if (item.canQueue) {
+        item.canQueue = false;
+        item.queue.push(item);
+      }
+      item = item.next;
+    }
+  }
+  static Channel = class EmitterChannel {
+    #queue: Subscription[] = [];
+    #errorHandler: (cause: unknown) => void;
+    constructor(errorHandler: (cause: unknown) => void) {
+      this.#errorHandler = errorHandler;
+    }
+    subscribe(emittable: Emittable, handler: () => void): Disposer {
+      const emitter = emittable[EMITTER];
+      const subHead = emitter.#subscriptionHead;
+      const sub: Subscription = {
+        canQueue: true,
+        handler,
+        queue: this.#queue,
+        next: subHead,
+        prev: undefined,
+      };
+      if (subHead !== undefined) {
+        subHead.prev = sub;
+      }
+      emitter.#subscriptionHead = sub;
+
+      return EmitterChannel.#disposer.bind(emitter, sub);
+    }
+    run(): void {
+      const queue = this.#queue;
+      const count = queue.length;
+      for (let i = 0; i < count; i++) {
+        const item = queue[i]!;
+        item.canQueue = true;
+        try {
+          item.handler();
+        } catch (err) {
+          this.#errorHandler(err);
+        }
+      }
+      if (count < queue.length) {
+        queue.splice(0, queue.length - count);
+      } else {
+        queue.length = 0;
+      }
+    }
+    static #disposer(this: Emitter, sub: Subscription): undefined {
+      if (sub.handler === disposedHandler) {
+        return;
+      }
+      sub.canQueue = false;
+      sub.handler = disposedHandler;
+      const { prev } = sub;
+      if (prev === undefined) {
+        this.#subscriptionHead = sub.next;
+      } else {
+        prev.next = sub.next;
+      }
+    }
+  };
+}
+
+export const EmitterChannel = Emitter.Channel;

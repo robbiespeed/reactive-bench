@@ -1,5 +1,6 @@
 import type { BenchmarkRunConfig } from "@reactive-bench/core/benchmark.ts";
 import type { Component, Controller } from "@reactive-bench/core/component.ts";
+import { getGC } from "@reactive-bench/core/gc.ts";
 import {
   benchmarkConfigs,
   frameworkConfigs,
@@ -7,7 +8,11 @@ import {
 import { basename, join } from "node:path";
 import { bench, describe } from "vitest";
 
-for (const benchmarkConfig of benchmarkConfigs) {
+const garbageCollect = getGC();
+
+for (const benchmarkConfig of benchmarkConfigs.filter(
+  ({ name }) => !name.includes("table")
+)) {
   describe(benchmarkConfig.name, async () => {
     const { params } = benchmarkConfig;
     const benchmarkModule = await import(benchmarkConfig.path);
@@ -30,20 +35,34 @@ for (const benchmarkConfig of benchmarkConfigs) {
         continue;
       }
 
-      let controller: Controller;
+      // let controller: Controller | undefined;
       bench(
         frameworkConfig.name,
-        () => {
+        async () => {
+          // controller = benchmark.setup(component, params);
+          let controller: Controller | undefined = benchmark.setup(
+            component,
+            params
+          );
           benchmark.run(controller, params);
+          controller.cleanup?.();
+          // controller = undefined;
+          // await garbageCollect();
         },
         {
-          setup: () => {
-            controller = benchmark.setup(component, params);
-            benchmark.preRun?.(controller, params);
+          setup: async () => {
+            // controller = benchmark.setup(component, params);
+            await garbageCollect();
           },
-          teardown: () => {
-            controller.cleanup?.();
+          teardown: async () => {
+            // controller!.cleanup?.();
+            // controller = undefined;
+            await garbageCollect();
           },
+          // iterations: benchmarkConfig.runOptions?.iterations,
+          // time: benchmarkConfig.runOptions?.time,
+          // warmupIterations: benchmarkConfig.runOptions?.warmupIterations,
+          // warmupTime: benchmarkConfig.runOptions?.warmupTime,
         }
       );
     }

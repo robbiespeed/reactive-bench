@@ -30,6 +30,7 @@ export function wrapDefer<TComponent extends Component<any>>(
     return {
       ...controller,
       cleanup: () => {
+        endBatch();
         innerCleanup?.();
         scope.stop();
       },

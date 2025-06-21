@@ -2,6 +2,7 @@ import { createBenchmark } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
 
 export interface DiamondParams {
+  writeCount: number;
   size: number;
 }
 
@@ -19,18 +20,21 @@ export interface DiamondProps {
 export type DiamondComponent = Component<DiamondProps, DiamondController>;
 
 export const diamond = createBenchmark({
-  setup: (component: DiamondComponent, { size }: DiamondParams) =>
-    component({
+  setup: (component: DiamondComponent, { size }: DiamondParams) => {
+    const controller = component({
       recordResult: () => {},
       size,
-    }),
-  preRun: (controller) => {
+    });
     controller.writeInput(-1);
     controller.getBody();
     controller.runDeferred?.();
+
+    return controller;
   },
-  run: (controller) => {
-    controller.writeInput(15);
-    controller.runDeferred?.();
+  run: (controller, { writeCount }) => {
+    for (let i = 0; i < writeCount; i++) {
+      controller.writeInput(i);
+      controller.runDeferred?.();
+    }
   },
 });

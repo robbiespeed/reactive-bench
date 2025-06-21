@@ -49,7 +49,11 @@ async function main() {
         )
       );
     } catch (cause) {
-      port.postMessage(new Error("Bench failure", { cause }));
+      port.postMessage({
+        results: [],
+        warmupResults: [],
+        failureReason: new Error("Bench failure", { cause }),
+      });
     }
   }
 }

@@ -5,15 +5,20 @@ export function calcPercentile(
   fraction: number
 ): number {
   const size = sortedValues.length;
-  const index = size * fraction;
-  const ceilIndex = Math.ceil(index);
-  return index === ceilIndex
-    ? (sortedValues[index - 1]! + sortedValues[index]!) / 2
-    : sortedValues[ceilIndex - 1]!;
+  const position = size * fraction;
+  const index = Math.floor(position);
+  const indexValue = sortedValues[index]!;
+  if (index === position) {
+    return indexValue;
+  }
+
+  return (
+    indexValue + (indexValue - sortedValues[index + 1]!) * (index - position)
+  );
 }
 
 export function calcMean(values: readonly number[]) {
-  return values.reduce((a, v) => a + v) / values.length;
+  return values.reduce((a, v) => a + v, 0) / values.length;
 }
 
 export function calcStandardDeviation(
@@ -52,28 +57,28 @@ export function getBenchmarkValues(
   results: BenchmarkResult[]
 ): BenchmarkValues {
   const setup: number[] = [];
+  const task: number[] = [];
   const cleanup: number[] = [];
   const gc: number[] = [];
   const memory: number[] = [];
-  const task: number[] = [];
 
   for (const result of results) {
     // convert to ms to micro seconds
     setup.push(result.setupTime * 1000);
+    task.push(result.taskTime * 1000);
     cleanup.push(result.cleanupTime * 1000);
-    gc.push(result.gcTime * 1000);
-    memory.push(result.memoryUsage);
-    for (const record of result.taskTimeRecords) {
-      task.push(record.task * 1000);
+    if (!Number.isNaN(result.gcTime)) {
+      gc.push(result.gcTime * 1000);
     }
+    memory.push(result.memoryUsage);
   }
 
   return {
+    setup,
+    task,
     cleanup,
     gc,
     memory,
-    setup,
-    task,
   };
 }
 
@@ -144,7 +149,7 @@ export interface StatItem {
 }
 
 export function createStatItem(values: readonly number[]): StatItem {
-  const sorted = [...values];
+  const sorted = values.slice();
   sorted.sort((a, b) => a - b);
 
   const size = sorted.length;

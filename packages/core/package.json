@@ -22,7 +22,7 @@
     "./*.ts": {
       "types": "./lib/*.d.ts",
       "default": "./lib/*.js",
-      "@typescript/source": "./src/*.ts"
+      "@reactive-bench/src": "./src/*.ts"
     },
     "./internal/*": null,
     "./package.json": "./package.json"
@@ -31,7 +31,7 @@
     "#lib/*": {
       "types": "./lib/*.d.ts",
       "default": "./lib/*.js",
-      "@typescript/source": "./src/*.ts"
+      "@reactive-bench/src": "./src/*.ts"
     }
   }
 }

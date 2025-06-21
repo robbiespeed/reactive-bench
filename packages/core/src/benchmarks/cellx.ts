@@ -1,15 +1,12 @@
 import { createBenchmark } from "#lib/benchmark";
 import type { Component, Controller } from "#lib/component";
+import { fib } from "#lib/math";
 
 export interface CellXParams {
   xSize: number;
   ySize: number;
-}
-
-export interface CellXRowByRowParams extends CellXParams {
-  xSize: number;
-  ySize: number;
-  rowWriteCount: number;
+  writeCount: number;
+  effectComplexity: number;
 }
 
 export interface CellXController extends Controller {
@@ -26,43 +23,51 @@ export interface CellXProps {
 
 export type CellXComponent = Component<CellXProps, CellXController>;
 
-const setup = (component: CellXComponent, { xSize, ySize }: CellXParams) =>
-  component({
-    recordResult: () => {},
+const setup = (
+  component: CellXComponent,
+  { xSize, ySize, effectComplexity }: CellXParams
+) => {
+  const controller = component({
+    recordResult: effectComplexity
+      ? () => {
+          fib(effectComplexity);
+        }
+      : () => {},
     xSize,
     ySize,
   });
 
-const preRun = (
-  controller: CellXController,
-  { ySize }: CellXParams
-): undefined => {
   controller.writeAll(-1);
   for (let y = 0; y < ySize; y++) {
     controller.getRow(y);
   }
+  controller.runDeferred?.();
+
+  return controller;
 };
 
 export const cellxWriteRowByRow = createBenchmark({
-  setup: setup,
-  preRun: preRun,
+  setup,
   run: (
     { writeRow, getRow, runDeferred },
-    { rowWriteCount }: CellXRowByRowParams
+    { ySize, writeCount }: CellXParams
   ) => {
-    for (let y = 0; y < rowWriteCount; y++) {
-      writeRow(y, 10);
-      getRow(y);
+    for (let i = 0; i < writeCount; i++) {
+      for (let y = 0; y < ySize; y++) {
+        writeRow(y, i);
+        getRow(y);
+      }
+      runDeferred?.();
     }
-    runDeferred?.();
   },
 });
 
 export const cellxWriteAll = createBenchmark({
-  setup: setup,
-  preRun: preRun,
-  run: ({ writeAll, runDeferred }) => {
-    writeAll(20);
-    runDeferred?.();
+  setup,
+  run: ({ writeAll, runDeferred }, { writeCount }) => {
+    for (let i = 0; i < writeCount; i++) {
+      writeAll(i);
+      runDeferred?.();
+    }
   },
 });

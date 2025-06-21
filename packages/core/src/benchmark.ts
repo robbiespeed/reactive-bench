@@ -1,6 +1,10 @@
 import type { Component, Controller } from "#lib/component";
-import type { BenchmarkConfig, FrameworkConfig } from "#lib/config";
-import { garbageCollect } from "#lib/gc";
+import type {
+  BenchmarkConfig,
+  BenchmarkSuiteItem,
+  FrameworkConfig,
+} from "#lib/config";
+import { getGC } from "#lib/gc";
 import { readMemoryUsage } from "#lib/memory";
 import {
   benchResultsToStats,
@@ -11,14 +15,9 @@ import {
 import { runWorker } from "#lib/worker-utils";
 import { basename, join } from "node:path";
 
-interface TaskTimeRecord {
-  preTask: number;
-  task: number;
-}
-
 export interface BenchmarkResult {
   setupTime: number;
-  taskTimeRecords: TaskTimeRecord[];
+  taskTime: number;
   cleanupTime: number;
   gcTime: number;
   memoryUsage: number;
@@ -26,6 +25,7 @@ export interface BenchmarkResult {
 }
 
 export interface BenchmarkRunResponse {
+  warmupResults: BenchmarkResult[];
   results: BenchmarkResult[];
   failureReason: undefined | Error;
 }
@@ -37,12 +37,16 @@ export interface BenchmarkRunConfig<
 > {
   setup: (Component: TComponent, params: TParams) => TRunController;
   run: (input: TRunController, params: TParams) => undefined;
-  preRun?: (input: TRunController, params: TParams) => undefined;
 }
 
 export interface BenchmarkRunOptions {
-  fullCount?: number;
-  taskCount?: number;
+  iterations?: number;
+  time?: number;
+  gcMemoryLimit?: number;
+  warmupIterations?: number;
+  warmupTime?: number;
+  warmupGCMemoryLimit?: number;
+  shouldGC?: boolean;
 }
 
 export function createBenchmark<
@@ -63,44 +67,42 @@ export async function runBenchmark<
   runConfig: BenchmarkRunConfig<TComponent, TParams, TRunController>,
   component: TComponent,
   params: TParams,
-  { fullCount = 5, taskCount = 100 }: BenchmarkRunOptions = {}
+  {
+    iterations = 100,
+    time = 500,
+    gcMemoryLimit = 10_000,
+    warmupIterations = 500,
+    warmupTime = 500,
+    warmupGCMemoryLimit = 500_000,
+    shouldGC = false,
+  }: BenchmarkRunOptions = {}
 ): Promise<BenchmarkRunResponse> {
-  if (fullCount < 1) {
-    throw new Error("fullCount must be 1 or greater");
-  }
-  if (taskCount < 0) {
-    throw new Error("taskCount must be 0 or greater");
-  }
-  const { setup, run, preRun } = runConfig;
-  const hasPreRun = preRun !== undefined;
-  const results: BenchmarkResult[] = [];
+  const { setup, run } = runConfig;
+  const garbageCollect = shouldGC ? getGC() : undefined;
+  let isInWarmup = warmupIterations > 0 || warmupTime > 0;
+  let warmupResults: BenchmarkResult[] | undefined;
+  let results: BenchmarkResult[] = [];
   let failureReason: undefined | Error;
-  for (let i = 0; i < fullCount; i++) {
+  let iEnd = isInWarmup ? warmupIterations : iterations;
+  let tEnd = performance.now() + (isInWarmup ? warmupTime : time);
+  let i = 0;
+  let t = 0;
+  while (i < iEnd || t < tEnd) {
+    // console.log(i, iEnd, t, tEnd);
     const setupStart = performance.now();
-    const controller = setup(component, params);
+    let controller: TRunController | undefined = setup(component, params);
     const setupTime = performance.now() - setupStart;
-    const taskTimeRecords: TaskTimeRecord[] = [];
+    let taskTime = 0;
 
-    for (let j = 0; j < taskCount; j++) {
-      const timeRecord: TaskTimeRecord = {
-        preTask: 0,
-        task: 0,
-      };
-      taskTimeRecords.push(timeRecord);
-      try {
-        if (hasPreRun) {
-          const preTaskStart = performance.now();
-          preRun(controller, params);
-          timeRecord.preTask = performance.now() - preTaskStart;
-        }
-        const taskStart = performance.now();
-        run(controller, params);
-        timeRecord.task = performance.now() - taskStart;
-      } catch (cause) {
-        failureReason = new Error("Task failure", { cause });
-        i = fullCount;
-        j = taskCount;
-      }
+    try {
+      const taskStart = performance.now();
+      run(controller, params);
+      t = performance.now();
+      taskTime = t - taskStart;
+      i++;
+    } catch (cause) {
+      failureReason = new Error("Task failure", { cause });
+      break;
     }
     const memoryUsage = readMemoryUsage();
     let cleanupTime = 0;
@@ -109,21 +111,41 @@ export async function runBenchmark<
       controller.cleanup?.();
       cleanupTime = performance.now() - cleanupStart;
     }
-    const gcStart = performance.now();
-    await garbageCollect();
-    const gcTime = performance.now() - gcStart;
+    controller = undefined;
+    let gcTime = NaN;
+    if (
+      garbageCollect &&
+      memoryUsage > (isInWarmup ? warmupGCMemoryLimit : gcMemoryLimit)
+    ) {
+      const gcStart = performance.now();
+      await garbageCollect();
+      gcTime = performance.now() - gcStart;
+    }
+
     const cleanMemoryUsage = readMemoryUsage();
     results.push({
       setupTime,
-      taskTimeRecords,
+      taskTime,
       cleanupTime,
       gcTime,
       memoryUsage,
       cleanMemoryUsage,
     });
+
+    if (isInWarmup && !(i < iEnd || t < tEnd)) {
+      await garbageCollect?.();
+      isInWarmup = false;
+      t = 0;
+      i = 0;
+      iEnd = iterations;
+      tEnd = performance.now() + time;
+      warmupResults = results;
+      results = [];
+    }
   }
   return {
     results,
+    warmupResults: warmupResults ?? [],
     failureReason,
   };
 }
@@ -154,9 +176,84 @@ function makeTableFromRecords(
   return table;
 }
 
+function makeCountTableFromRecords(
+  resultKeys: Set<string>,
+  processedRecords: (readonly [string, Map<string, ProcessedRecord>])[],
+  missingSymbol = "-"
+) {
+  const table = [];
+  table.push(["benchmark name", ...resultKeys]);
+  for (const [benchName, records] of processedRecords) {
+    const row = [benchName];
+    table.push(row);
+    for (const key of resultKeys) {
+      const record = records.get(key);
+      if (record) {
+        row.push(record.values.task.length.toFixed(0));
+      } else {
+        row.push(missingSymbol);
+      }
+    }
+  }
+  return table;
+}
+
+function makeWarmupCountTable(
+  resultKeys: Set<string>,
+  input: Map<string, Map<string, number>>,
+  missingSymbol = "-"
+) {
+  const table = [];
+  table.push(["benchmark name", ...resultKeys]);
+  for (const [benchName, records] of input) {
+    const row = [benchName];
+    table.push(row);
+    for (const key of resultKeys) {
+      const record = records.get(key);
+      if (record) {
+        row.push(record.toFixed(0));
+      } else {
+        row.push(missingSymbol);
+      }
+    }
+  }
+  return table;
+}
+
 function printCsv(data: string[][], separator = ",") {
   for (const row of data) {
     console.log(row.join(separator));
+  }
+}
+
+async function runMain(
+  item: BenchmarkSuiteItem
+): Promise<BenchmarkRunResponse | undefined> {
+  const { componentConfig, benchmarkConfig } = item;
+
+  const componentModule = await import(componentConfig.path).catch(() => ({}));
+  const component: Component<unknown> | undefined =
+    componentModule[componentConfig.key];
+
+  if (component === undefined) {
+    return undefined;
+  }
+
+  const benchmarkModule = await import(benchmarkConfig.path);
+  const benchmark = benchmarkModule[benchmarkConfig.key];
+  try {
+    return await runBenchmark(
+      benchmark,
+      component,
+      benchmarkConfig.params,
+      benchmarkConfig.runOptions
+    );
+  } catch (cause) {
+    return {
+      results: [],
+      warmupResults: [],
+      failureReason: new Error("Bench failure", { cause }),
+    };
   }
 }
 
@@ -164,15 +261,25 @@ export interface RunBenchmarkSuiteOptions {
   benchmarkFilter?: (name: string) => boolean;
   frameworkFilter?: (name: string) => boolean;
   verbose?: boolean;
+  runInWorker?: boolean;
+  shouldGC?: boolean;
 }
 
 export async function runBenchmarkSuite(
   frameworks: FrameworkConfig[],
   benchmarkConfigs: BenchmarkConfig[],
-  { verbose, frameworkFilter, benchmarkFilter }: RunBenchmarkSuiteOptions = {}
+  {
+    verbose,
+    frameworkFilter,
+    benchmarkFilter,
+    runInWorker = true,
+    shouldGC = false,
+  }: RunBenchmarkSuiteOptions = {}
 ) {
+  const runner = runInWorker ? runWorker : runMain;
   const resultKeys = new Set<string>();
   const benchmarksGroup = new Map<string, Map<string, BenchmarkResult[]>>();
+  const benchmarksWarmupCountGroup = new Map<string, Map<string, number>>();
 
   for (const benchmarkConfig of benchmarkConfigs) {
     const benchName = benchmarkConfig.name;
@@ -181,7 +288,9 @@ export async function runBenchmarkSuite(
     }
     const benchmarkBasename = basename(benchmarkConfig.path);
     const resultsGroup = new Map<string, BenchmarkResult[]>();
+    const warmupCounts = new Map<string, number>();
     benchmarksGroup.set(benchName, resultsGroup);
+    benchmarksWarmupCountGroup.set(benchName, warmupCounts);
 
     if (verbose) {
       console.log(`Benchmark: ${benchName}`);
@@ -198,16 +307,23 @@ export async function runBenchmarkSuite(
         continue;
       }
       const frameworkPath = fConfig.path;
-      const response = await runWorker({
+      const response = await runner({
         componentConfig: {
           path: join(frameworkPath, benchmarkBasename),
           key: fConfig.componentKey ?? "component",
         },
-        benchmarkConfig,
+        benchmarkConfig: {
+          ...benchmarkConfig,
+          runOptions: {
+            shouldGC,
+            ...benchmarkConfig.runOptions,
+          },
+        },
       });
       if (!(response === undefined || response.failureReason)) {
         resultKeys.add(fConfig.name);
         resultsGroup.set(fConfig.name, response.results);
+        warmupCounts.set(fConfig.name, response.warmupResults.length);
       }
       if (verbose) {
         if (response) {
@@ -231,6 +347,12 @@ export async function runBenchmarkSuite(
     ([name, group]) => [name, getProcessedGroupRecords(group)] as const
   );
 
+  console.log("\nWarmup Count:");
+  printCsv(makeWarmupCountTable(resultKeys, benchmarksWarmupCountGroup));
+
+  console.log("\nSample Count:");
+  printCsv(makeCountTableFromRecords(resultKeys, processedRecords));
+
   console.log("\nMean setup time in micro seconds:");
   printCsv(
     makeTableFromRecords(resultKeys, processedRecords, "means", "setup", 3)
@@ -240,6 +362,13 @@ export async function runBenchmarkSuite(
   printCsv(
     makeTableFromRecords(resultKeys, processedRecords, "means", "cleanup", 3)
   );
+
+  if (shouldGC) {
+    console.log("\nMean GC time in micro seconds:");
+    printCsv(
+      makeTableFromRecords(resultKeys, processedRecords, "means", "gc", 3)
+    );
+  }
 
   console.log("\nMean memory in kb:");
   printCsv(

@@ -1,5 +1,5 @@
 import type { BenchmarkRunOptions } from "#lib/benchmark";
-import type { CellXParams, CellXRowByRowParams } from "#lib/benchmarks/cellx";
+import type { CellXParams } from "#lib/benchmarks/cellx";
 import type { DiamondParams } from "#lib/benchmarks/diamond";
 import type { OneToManyParams } from "#lib/benchmarks/one-to-many";
 import type { TableParams } from "#lib/benchmarks/table";
@@ -26,7 +26,7 @@ export interface BenchmarkConfig {
   path: string;
   key: string;
   params: {};
-  runOptions: BenchmarkRunOptions;
+  runOptions?: BenchmarkRunOptions;
 }
 
 export interface TestConfig {
@@ -34,6 +34,7 @@ export interface TestConfig {
   path: string;
   key: string;
   params: {};
+  optional?: boolean;
 }
 
 export interface BenchmarkSuiteItem {
@@ -47,50 +48,68 @@ export interface TestSuiteItem {
 }
 
 const runOptions: BenchmarkRunOptions = {
-  fullCount: 10,
-  taskCount: 20,
+  // iterations: 20,
+  // time: 1000,
+  // warmupIterations: 10,
+  // warmupTime: 500,
 };
 
 export const benchmarkConfigs: BenchmarkConfig[] = [
   {
-    name: "one to many (50x50)",
+    name: "one to many (100x100)",
     path: "@reactive-bench/core/benchmarks/one-to-many.ts",
     key: "oneToMany",
     params: {
-      xSize: 50,
-      ySize: 50,
+      xSize: 100,
+      ySize: 100,
+      writeCount: 5,
     } satisfies OneToManyParams,
     runOptions,
   },
   {
-    name: "one to many (broad 1x500)",
+    name: "one to many (no effects 10x10)",
+    path: "@reactive-bench/core/benchmarks/one-to-many.ts",
+    key: "oneToMany",
+    params: {
+      xSize: 10,
+      ySize: 10,
+      writeCount: 50,
+      noEffects: true,
+    } satisfies OneToManyParams,
+    runOptions,
+  },
+  {
+    name: "one to many (broad 1x1000)",
     path: "@reactive-bench/core/benchmarks/one-to-many.ts",
     key: "oneToMany",
     params: {
       xSize: 1,
-      ySize: 500,
+      ySize: 1000,
+      writeCount: 5,
     } satisfies OneToManyParams,
     runOptions,
   },
   {
-    name: "one to many (deep 500x1)",
+    name: "one to many (deep 1000x1)",
     path: "@reactive-bench/core/benchmarks/one-to-many.ts",
     key: "oneToMany",
     params: {
-      xSize: 500,
+      xSize: 1000,
       ySize: 1,
+      writeCount: 5,
     } satisfies OneToManyParams,
     runOptions,
   },
   {
-    name: "cellx (write then read row by row 10x500)",
+    name: "cellx (write then read row by row 10x50)",
     path: "@reactive-bench/core/benchmarks/cellx.ts",
     key: "cellxWriteRowByRow",
     params: {
       xSize: 10,
-      ySize: 500,
-      rowWriteCount: 5,
-    } satisfies CellXRowByRowParams,
+      ySize: 50,
+      writeCount: 5,
+      effectComplexity: 1,
+    } satisfies CellXParams,
     runOptions,
   },
   {
@@ -100,6 +119,8 @@ export const benchmarkConfigs: BenchmarkConfig[] = [
     params: {
       xSize: 50,
       ySize: 50,
+      writeCount: 5,
+      effectComplexity: 1,
     } satisfies CellXParams,
     runOptions,
   },
@@ -107,7 +128,7 @@ export const benchmarkConfigs: BenchmarkConfig[] = [
     name: "diamond",
     path: "@reactive-bench/core/benchmarks/diamond.ts",
     key: "diamond",
-    params: { size: 100 } satisfies DiamondParams,
+    params: { size: 1000, writeCount: 5 } satisfies DiamondParams,
     runOptions,
   },
   {

@@ -1,12 +1,9 @@
-import type {
-  DiamondComponent,
-  DiamondParams,
-  DiamondProps,
-} from "#lib/benchmarks/diamond";
+import type { DiamondComponent, DiamondProps } from "#lib/benchmarks/diamond";
 import type { TestConfig } from "#lib/config";
 import { deepEqual, equal } from "node:assert";
 
-export interface DiamondTestParams extends DiamondParams {
+export interface DiamondTestParams {
+  size: number;
   input: number;
   expectedSums: number[];
   expectedBody: number[];
@@ -27,6 +24,7 @@ export const diamond = (
   controller.runDeferred?.();
   equal(results[1], expectedSums[1]);
   deepEqual(controller.getBody(), expectedBody);
+  controller.cleanup?.();
 };
 
 const path = "@reactive-bench/core/tests/diamond.ts";

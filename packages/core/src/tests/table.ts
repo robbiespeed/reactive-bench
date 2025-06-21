@@ -29,6 +29,7 @@ export const tableRun = (
     table.items.every((item) => TableItem.isTableItem(item)),
     "Detected item which was not a TableItem"
   );
+  controller.cleanup?.();
 };
 
 const path = "@reactive-bench/core/tests/table.ts";

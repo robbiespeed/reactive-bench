@@ -90,36 +90,37 @@ export interface TableParams {
 const setup = (component: TableComponent) => {
   const externalController = createTable();
   const componentController = component({ table: externalController.model });
+  externalController.clear();
+  componentController.runDeferred?.();
   return {
     ...externalController,
     ...componentController,
   };
 };
 
-const clearTableInit = (
-  controller: ExternalTableController & TableController
-): undefined => {
-  controller.clear();
-  controller.runDeferred?.();
+const existingTableSetup = (
+  component: TableComponent,
+  { appendSize }: TableParams
+) => {
+  const externalController = createTable();
+  const componentController = component({ table: externalController.model });
+  externalController.clear();
+  componentController.runDeferred?.();
+  externalController.append(appendSize);
+  componentController.runDeferred?.();
+  return {
+    ...externalController,
+    ...componentController,
+  };
 };
 
 export const tableRun = createBenchmark({
   setup,
-  preRun: clearTableInit,
   run: (controller, { appendSize }: TableParams) => {
     controller.append(appendSize);
     controller.runDeferred?.();
   },
 });
-
-const existingTableInit = (
-  controller: ExternalTableController & TableController,
-  { appendSize }: TableParams
-): undefined => {
-  controller.clear();
-  controller.append(appendSize);
-  controller.runDeferred?.();
-};
 
 const createExistingTableRunner = (
   run: (
@@ -128,8 +129,7 @@ const createExistingTableRunner = (
   ) => undefined
 ) =>
   createBenchmark({
-    setup,
-    preRun: existingTableInit,
+    setup: existingTableSetup,
     run,
   });
 

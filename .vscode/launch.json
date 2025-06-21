@@ -1,0 +1,36 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "request": "launch",
+      "name": "Debug Tests",
+      "type": "node",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "test-debug", "-f", "metron-z"],
+      "attachSimplePort": 9229
+    },
+    {
+      "request": "launch",
+      "name": "Debug Benchmarks",
+      "type": "node",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "run",
+        "bench-debug",
+        "-f",
+        "metron-z",
+        "-b",
+        "to many (100x",
+        "-m"
+      ],
+      "attachSimplePort": 9229
+    }
+  ]
+}

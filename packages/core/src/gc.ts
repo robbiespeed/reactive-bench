@@ -1,12 +1,13 @@
 declare const Bun: any;
 
-function getGC(): () => Promise<undefined> {
+export function getGC(): () => Promise<undefined> {
   if (globalThis.gc) {
     const gc = globalThis.gc;
     return async () => {
       await new Promise<void>((resolve) => setTimeout(() => resolve(), 0));
       gc();
       await new Promise<void>((resolve) => setTimeout(() => resolve(), 0));
+      await Promise.resolve();
     };
   } else if ((globalThis as any).Bun) {
     return async () => {
@@ -14,7 +15,5 @@ function getGC(): () => Promise<undefined> {
       return;
     };
   }
-  return async () => {};
+  throw new Error("Cannot find GC");
 }
-
-export const garbageCollect = getGC();

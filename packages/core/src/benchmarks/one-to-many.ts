@@ -4,6 +4,7 @@ import type { Component, Controller } from "#lib/component";
 export interface OneToManyParams {
   xSize: number;
   ySize: number;
+  writeCount: number;
   noEffects?: boolean;
 }
 
@@ -25,20 +26,31 @@ export const oneToMany = createBenchmark({
   setup: (
     component: OneToManyComponent,
     { xSize, ySize, noEffects = false }: OneToManyParams
-  ) =>
-    component({
+  ) => {
+    const controller = component({
       recordResult: () => {},
       xSize,
       ySize,
       noEffects,
-    }),
-  preRun: (controller) => {
+    });
     controller.writeInput(-1);
     controller.getBody();
     controller.runDeferred?.();
+
+    return controller;
   },
-  run: (controller) => {
-    controller.writeInput(2);
-    controller.runDeferred?.();
+  run: (controller, { writeCount, noEffects }) => {
+    if (noEffects) {
+      for (let i = 0; i < writeCount; i++) {
+        controller.writeInput(i);
+        controller.runDeferred?.();
+        controller.getBody();
+      }
+    } else {
+      for (let i = 0; i < writeCount; i++) {
+        controller.writeInput(i);
+        controller.runDeferred?.();
+      }
+    }
   },
 });

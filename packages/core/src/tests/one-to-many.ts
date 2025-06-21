@@ -1,12 +1,15 @@
 import type {
   OneToManyComponent,
-  OneToManyParams,
   OneToManyProps,
 } from "#lib/benchmarks/one-to-many";
 import type { TestConfig } from "#lib/config";
 import { deepEqual } from "node:assert";
 
-export interface OneToManyTestParams extends OneToManyParams {
+export interface OneToManyTestParams {
+  xSize: number;
+  ySize: number;
+  noEffects?: boolean;
+  writeSync?: boolean;
   input: number;
   expectedResults: [number, number][];
   expectedBody: number[][];
@@ -20,6 +23,7 @@ export const oneToMany = (
     input,
     expectedResults,
     expectedBody,
+    writeSync = false,
     noEffects = false,
   }: OneToManyTestParams
 ) => {
@@ -34,12 +38,16 @@ export const oneToMany = (
     noEffects,
   });
   controller.runDeferred?.();
+  controller.getBody();
   controller.writeInput(input);
-  controller.runDeferred?.();
+  if (!writeSync) {
+    controller.runDeferred?.();
+  }
   controller.writeInput(input + 1);
   controller.runDeferred?.();
   deepEqual(results, expectedResults);
   deepEqual(controller.getBody(), expectedBody);
+  controller.cleanup?.();
 };
 
 const path = "@reactive-bench/core/tests/one-to-many.ts";
@@ -75,7 +83,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
         [5, 9],
       ],
       expectedBody: [[4], [5], [6], [7], [8], [9]],
-    },
+    } satisfies OneToManyTestParams,
   },
   {
     name: "one to many (deep 6x1)",
@@ -91,7 +99,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
         [0, 21],
       ],
       expectedBody: [[6, 7, 9, 12, 16, 21]],
-    },
+    } satisfies OneToManyTestParams,
   },
   {
     name: "one to many (3x3)",
@@ -117,7 +125,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
         [4, 5, 7],
         [5, 6, 8],
       ],
-    },
+    } satisfies OneToManyTestParams,
   },
   {
     name: "one to many (no effects 3x3)",
@@ -134,6 +142,23 @@ export const oneToManyTestConfigs: TestConfig[] = [
         [4, 5, 7],
         [5, 6, 8],
       ],
-    },
+    } satisfies OneToManyTestParams,
+  },
+  {
+    name: "one to many (deferred 6x1)",
+    path,
+    key,
+    params: {
+      xSize: 6,
+      ySize: 1,
+      input: 5,
+      writeSync: true,
+      expectedResults: [
+        [0, 14],
+        [0, 21],
+      ],
+      expectedBody: [[6, 7, 9, 12, 16, 21]],
+    } satisfies OneToManyTestParams,
+    optional: true,
   },
 ];

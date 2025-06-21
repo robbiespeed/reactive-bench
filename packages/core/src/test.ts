@@ -1,13 +1,21 @@
-import type { FrameworkConfig, TestConfig } from "#lib/config";
-import { runWorker } from "#lib/worker-utils";
+import type { FrameworkConfig, TestConfig, TestSuiteItem } from "#lib/config";
 import { basename, join } from "node:path";
+import type { Component } from "#lib/component";
 
-function logTestResponse(response: Error | true | undefined, testName: string) {
+function logTestResponse(
+  response: Error | true | undefined,
+  testName: string,
+  isOptional = false
+) {
   if (response === true) {
     console.log(`${testName}: PASS`);
   } else if (response) {
-    console.error(`${testName}: FAIL`, response);
-    console.log("\n");
+    if (isOptional) {
+      console.log(`${testName}: FAIL (OPTIONAL)`);
+    } else {
+      console.error(`${testName}: FAIL`, response);
+      console.log("\n");
+    }
   } else {
     console.log(`${testName}: MISSING`);
   }
@@ -40,14 +48,35 @@ export async function runTestSuite(
         continue;
       }
       const frameworkPath = fConfig.path;
-      const response = await runWorker({
+      const response = await runMain({
         componentConfig: {
           path: join(frameworkPath, benchmarkBasename),
           key: fConfig.componentKey ?? "component",
         },
         testConfig,
       });
-      logTestResponse(response, testName);
+      logTestResponse(response, testName, testConfig.optional);
     }
   }
+}
+
+async function runMain(item: TestSuiteItem) {
+  const { componentConfig, testConfig } = item;
+
+  const componentModule = await import(componentConfig.path).catch(() => ({}));
+  const component: Component<unknown> | undefined =
+    componentModule[componentConfig.key];
+
+  if (component === undefined) {
+    return undefined;
+  }
+
+  const testModule = await import(testConfig.path);
+  const test = testModule[testConfig.key];
+  try {
+    await test(component, testConfig.params);
+  } catch (cause) {
+    return new Error("Test failure", { cause });
+  }
+  return true;
 }
