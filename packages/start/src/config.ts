@@ -7,10 +7,10 @@ import {
 const fwPrefix = "@reactive-bench/start/frameworks";
 
 export const frameworkConfigs: FrameworkConfig[] = [
-  // {
-  //   name: "js-raw",
-  //   path: `${fwPrefix}/js-raw`,
-  // },
+  {
+    name: "js-raw",
+    path: `${fwPrefix}/js-raw`,
+  },
   // {
   //   name: "metron-a",
   //   path: `${fwPrefix}/metron-a`,
@@ -55,31 +55,31 @@ export const frameworkConfigs: FrameworkConfig[] = [
   //   path: `${fwPrefix}/metron-zzyy`,
   //   componentKey: "managed",
   // },
-  {
-    name: "metron-zzyyx (managed)",
-    path: `${fwPrefix}/metron-zzyyx`,
-    componentKey: "managed",
-  },
-  {
-    name: "metron-zzyyx (map managed)",
-    path: `${fwPrefix}/metron-zzyyx`,
-    componentKey: "mapManaged",
-  },
-  {
-    name: "metron-zzyyxl (managed)",
-    path: `${fwPrefix}/metron-zzyyxl`,
-    componentKey: "managed",
-  },
+  // {
+  //   name: "metron-zzyyx (managed)",
+  //   path: `${fwPrefix}/metron-zzyyx`,
+  //   componentKey: "managed",
+  // },
+  // {
+  //   name: "metron-zzyyx (map managed)",
+  //   path: `${fwPrefix}/metron-zzyyx`,
+  //   componentKey: "mapManaged",
+  // },
+  // {
+  //   name: "metron-zzyyxl (managed)",
+  //   path: `${fwPrefix}/metron-zzyyxl`,
+  //   componentKey: "managed",
+  // },
   {
     name: "metron-zzyyxl (sd managed)",
     path: `${fwPrefix}/metron-zzyyxl`,
     componentKey: "staticDerive",
   },
-  {
-    name: "metron-zzyyxl (map managed)",
-    path: `${fwPrefix}/metron-zzyyxl`,
-    componentKey: "mapManaged",
-  },
+  // {
+  //   name: "metron-zzyyxl (map managed)",
+  //   path: `${fwPrefix}/metron-zzyyxl`,
+  //   componentKey: "mapManaged",
+  // },
   // {
   //   name: "metron-zzyx (managed)",
   //   path: `${fwPrefix}/metron-zzyx`,
@@ -99,10 +99,18 @@ export const frameworkConfigs: FrameworkConfig[] = [
   //   path: `${fwPrefix}/alien-signals`,
   //   componentKey: "eager",
   // },
-  // {
-  //   name: "alien-signals (deferred)",
-  //   path: `${fwPrefix}/alien-signals`,
-  // },
+  {
+    name: "alien-signals (deferred)",
+    path: `${fwPrefix}/alien-signals`,
+  },
+  {
+    name: "r3",
+    path: `${fwPrefix}/r3`,
+  },
+  {
+    name: "toy-hooks",
+    path: `${fwPrefix}/toy-hooks`,
+  },
   // {
   //   name: "metron",
   //   path: `${fwPrefix}/metron`,

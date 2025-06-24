@@ -7,12 +7,13 @@ export interface CellXTestParams {
   ySize: number;
   value: number;
   minResultLength: number;
-  expectedRows: number[][];
+  expectedRowsA: number[][];
+  expectedRowsB: number[][];
 }
 
 export const cellx = (
   component: CellXComponent,
-  { xSize, ySize, value, expectedRows, minResultLength }: CellXTestParams
+  { xSize, ySize, value, expectedRowsA, expectedRowsB, minResultLength }: CellXTestParams
 ) => {
   const results: [number, number, number][] = [];
   const controller = component({
@@ -31,11 +32,19 @@ export const cellx = (
   for (let y = 0; y < ySize; y++) {
     rows.push(controller.getRow(y));
   }
-  deepEqual(rows, expectedRows);
+  deepEqual(rows, expectedRowsA);
   ok(
     results.length >= minResultLength,
     `Got ${results.length} results, expected at least ${minResultLength}`
   );
+  results.length = 0;
+  controller.writeRow(0, value + 1);
+  controller.runDeferred?.();
+  rows.length = 0;
+  for (let y = 0; y < ySize; y++) {
+    rows.push(controller.getRow(y));
+  }
+  deepEqual(rows, expectedRowsB);
   controller.cleanup?.();
 };
 
@@ -49,20 +58,22 @@ export const cellxTestConfigs: TestConfig[] = [
     key,
     params: {
       value: 3,
-      xSize: 10,
-      ySize: 10,
-      minResultLength: 59,
-      expectedRows: [
-        [3, 3, 0, -3, 0, 0, 0, 3, 0, 0],
-        [3, 0, -3, 0, 0, 0, 3, 0, 0, 3],
-        [3, 6, 0, -3, 0, -3, 0, 3, -3, 0],
-        [3, 0, 0, 0, -3, 0, 0, -3, 0, -3],
-        [3, 6, 0, 0, 0, -3, 3, 3, 0, 6],
-        [3, 0, 0, 0, 0, 3, 3, 3, 6, -6],
-        [3, 6, 0, 0, -3, -6, 0, -3, 6, 9],
-        [3, 0, 0, -3, -6, -3, -6, 3, 3, 6],
-        [3, 6, 3, 6, 0, 0, -3, -6, 0, -3],
-        [3, 3, 6, 3, 6, 0, 0, -3, -6, 0],
+      xSize: 5,
+      ySize: 5,
+      minResultLength: 7,
+      expectedRowsA: [
+        [ 3, 3, 0, -3, 0 ],
+        [ 3, 0, -3, 0, -3 ],
+        [ 3, 6, 0, 0, 0 ],
+        [ 3, 0, 3, 0, -3 ],
+        [ 3, 3, 0, 3, 0 ]
+      ],
+      expectedRowsB: [
+        [ 4, 3, 1, -3, 0 ],
+        [ 3, 1, -3, 0, -3 ],
+        [ 3, 6, 1, 0, 1 ],
+        [ 3, 0, 3, 1, -3 ],
+        [ 3, 3, 0, 3, 1 ]
       ],
     } satisfies CellXTestParams,
   },
@@ -72,16 +83,21 @@ export const cellxTestConfigs: TestConfig[] = [
     key,
     params: {
       value: 7,
-      xSize: 20,
-      ySize: 5,
-      minResultLength: 48,
-      expectedRows: [
-        [7, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7],
-        [7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0],
-        [7, 14, 0, 0, 0, -14, 0, 0, 0, 14, 0, 0, 0, -14, 0, 0, 0, 14, 0, 0],
-        [7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0],
-        [7, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7, 0, -7, 0, -7, 0, 7, 0, 7],
+      xSize: 6,
+      ySize: 4,
+      minResultLength: 8,
+      expectedRowsA: [
+        [ 7, 7, 0, -7, -7, -14 ],
+        [ 7, 0, -7, -7, -14, -7 ],
+        [ 7, 14, 7, 7, 0, -7 ],
+        [ 7, 7, 14, 7, 7, 0 ],
       ],
+      expectedRowsB: [
+        [ 8, 7, 1, -7, -7, -14 ],
+        [ 7, 1, -7, -7, -14, -8 ],
+        [ 7, 14, 8, 7, 1, -7 ],
+        [ 7, 7, 14, 8, 7, 1 ]
+      ]
     } satisfies CellXTestParams,
   },
 ];

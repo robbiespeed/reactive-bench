@@ -46,6 +46,30 @@ const setup = (
   return controller;
 };
 
+function getAllRows(getRow: (y: number) => number[], ySize: number): number[][] {
+  const rows: number[][] = [];
+  for (let y = 0; y < ySize; y++) {
+    rows.push(getRow(y));
+  }
+  return rows;
+}
+
+export const cellxWriteReadRowByRow = createBenchmark({
+  setup,
+  run: (
+    { writeRow, getRow, runDeferred },
+    { ySize, writeCount }: CellXParams
+  ) => {
+    for (let i = 0; i < writeCount; i++) {
+      for (let y = 0; y < ySize; y++) {
+        writeRow(y, i);
+        runDeferred?.();
+        getRow(y);
+      }
+    }
+  },
+});
+
 export const cellxWriteRowByRow = createBenchmark({
   setup,
   run: (
@@ -55,19 +79,20 @@ export const cellxWriteRowByRow = createBenchmark({
     for (let i = 0; i < writeCount; i++) {
       for (let y = 0; y < ySize; y++) {
         writeRow(y, i);
-        getRow(y);
       }
       runDeferred?.();
+      getAllRows(getRow, ySize);
     }
   },
 });
 
 export const cellxWriteAll = createBenchmark({
   setup,
-  run: ({ writeAll, runDeferred }, { writeCount }) => {
+  run: ({ writeAll, runDeferred, getRow }, { writeCount, ySize }) => {
     for (let i = 0; i < writeCount; i++) {
       writeAll(i);
       runDeferred?.();
+      getAllRows(getRow, ySize);
     }
   },
 });

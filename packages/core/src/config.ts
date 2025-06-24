@@ -101,7 +101,7 @@ export const benchmarkConfigs: BenchmarkConfig[] = [
     runOptions,
   },
   {
-    name: "cellx (write then read row by row 10x50)",
+    name: "cellx (write row by row read all 10x50)",
     path: "@reactive-bench/core/benchmarks/cellx.ts",
     key: "cellxWriteRowByRow",
     params: {
@@ -113,7 +113,31 @@ export const benchmarkConfigs: BenchmarkConfig[] = [
     runOptions,
   },
   {
-    name: "cellx (write all 50x50)",
+    name: "cellx (write read row by row 10x50)",
+    path: "@reactive-bench/core/benchmarks/cellx.ts",
+    key: "cellxWriteReadRowByRow",
+    params: {
+      xSize: 10,
+      ySize: 50,
+      writeCount: 5,
+      effectComplexity: 1,
+    } satisfies CellXParams,
+    runOptions,
+  },
+  {
+    name: "cellx (write read row by row 3x3)",
+    path: "@reactive-bench/core/benchmarks/cellx.ts",
+    key: "cellxWriteReadRowByRow",
+    params: {
+      xSize: 3,
+      ySize: 3,
+      writeCount: 5,
+      effectComplexity: 1,
+    } satisfies CellXParams,
+    runOptions,
+  },
+  {
+    name: "cellx (write all read all 50x50)",
     path: "@reactive-bench/core/benchmarks/cellx.ts",
     key: "cellxWriteAll",
     params: {

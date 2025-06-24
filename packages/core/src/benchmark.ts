@@ -220,7 +220,7 @@ function makeWarmupCountTable(
   return table;
 }
 
-function printCsv(data: string[][], separator = ",") {
+function printCsv(data: string[][], separator = ", ") {
   for (const row of data) {
     console.log(row.join(separator));
   }

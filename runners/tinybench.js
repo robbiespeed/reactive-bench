@@ -10,7 +10,7 @@ import { Bench } from "tinybench";
 const garbageCollect = getGC();
 
 for (const benchmarkConfig of benchmarkConfigs.filter(
-  ({ name }) => !name.includes("table")
+  ({ name }) => name.includes("cellx") 
 )) {
   const bench = new Bench({
     name: benchmarkConfig.name,

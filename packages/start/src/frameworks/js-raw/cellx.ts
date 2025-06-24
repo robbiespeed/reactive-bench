@@ -13,22 +13,26 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
       bodyCache = [];
       for (let y = 0; y < ySize; y++) {
         const yRow: number[] = [sources[y]!];
+        recordResult(0, y, sources[y]!);
         bodyCache.push(yRow);
       }
       let layer = sources;
       for (let x = 1; x < xSize; x++) {
         const prevLayer = layer;
         const top = prevLayer[1]!;
+        recordResult(x, 0, top);
         bodyCache[0]!.push(top);
         layer = [top];
         for (let y = 1; y < bottomY; y++) {
           const a = prevLayer[y - 1]!;
           const b = prevLayer[y + 1]!;
           const c = y % 2 === 0 ? a + b : a - b;
+          recordResult(x, y, c);
           bodyCache[y]!.push(c);
           layer.push(c);
         }
         const bottom = prevLayer[bottomY - 1]!;
+        recordResult(x, bottomY, bottom);
         bodyCache[bottomY]!.push(bottom);
         layer.push(bottom);
       }
@@ -36,22 +40,7 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
     return bodyCache;
   };
 
-  const recordResults = (): undefined => {
-    const body = getState();
-    for (let x = 0; x < xSize; x++) {
-      for (let y = 0; y < ySize; y++) {
-        recordResult(x, y, body[y]![x]!);
-      }
-    }
-  };
-
-  let isRecordDeferred = true;
-  const runDeferred = (): undefined => {
-    if (isRecordDeferred) {
-      recordResults();
-      isRecordDeferred = false;
-    }
-  };
+  getState();
 
   return {
     writeRow(y, value) {
@@ -60,27 +49,13 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
       }
       sources[y] = value;
       bodyCache = undefined;
-      isRecordDeferred = true;
     },
     writeAll(value) {
-      let isChanged = false;
-      let y = 0;
-      while (y < ySize) {
-        if (sources[y] === value) {
-          y++;
-        }
-        isChanged = true;
-        break;
-      }
-      if (isChanged) {
-        sources.fill(value);
-        bodyCache = undefined;
-        isRecordDeferred = true;
-      }
+      sources.fill(value);
+      bodyCache = undefined;
     },
     getRow(y) {
       return getState()[y]!;
     },
-    runDeferred,
   };
 };
