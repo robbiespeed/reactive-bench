@@ -26,8 +26,8 @@ export const diamond = createBenchmark({
       size,
     });
     controller.writeInput(-1);
-    controller.getBody();
     controller.runDeferred?.();
+    controller.getBody();
 
     return controller;
   },
