@@ -52,12 +52,14 @@ export const oneToMany = (
 
 const path = "@reactive-bench/core/tests/one-to-many.ts";
 const key = "oneToMany";
+const componentPath = "one-to-many.ts";
 
 export const oneToManyTestConfigs: TestConfig[] = [
   {
     name: "one to many (broad 1x6)",
     path,
     key,
+    componentPath,
     params: {
       xSize: 1,
       ySize: 6,
@@ -89,6 +91,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
     name: "one to many (deep 6x1)",
     path,
     key,
+    componentPath,
     params: {
       xSize: 6,
       ySize: 1,
@@ -105,6 +108,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
     name: "one to many (3x3)",
     path,
     key,
+    componentPath,
     params: {
       xSize: 3,
       ySize: 3,
@@ -131,6 +135,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
     name: "one to many (no effects 3x3)",
     path,
     key,
+    componentPath,
     params: {
       xSize: 3,
       ySize: 3,
@@ -148,6 +153,7 @@ export const oneToManyTestConfigs: TestConfig[] = [
     name: "one to many (deferred 6x1)",
     path,
     key,
+    componentPath,
     params: {
       xSize: 6,
       ySize: 1,

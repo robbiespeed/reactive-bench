@@ -29,12 +29,14 @@ export const diamond = (
 
 const path = "@reactive-bench/core/tests/diamond.ts";
 const key = "diamond";
+const componentPath = "diamond.ts";
 
 export const diamondTestConfigs: TestConfig[] = [
   {
     name: "diamond (1)",
     path,
     key,
+    componentPath,
     params: {
       size: 5,
       input: 3,
@@ -46,6 +48,7 @@ export const diamondTestConfigs: TestConfig[] = [
     name: "diamond (2)",
     path,
     key,
+    componentPath,
     params: {
       size: 8,
       input: 7,

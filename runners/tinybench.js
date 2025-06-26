@@ -10,7 +10,7 @@ import { Bench } from "tinybench";
 const garbageCollect = getGC();
 
 for (const benchmarkConfig of benchmarkConfigs.filter(
-  ({ name }) => name.includes("cellx") 
+  ({ name }) => name.includes("project") 
 )) {
   const bench = new Bench({
     name: benchmarkConfig.name,
@@ -23,7 +23,7 @@ for (const benchmarkConfig of benchmarkConfigs.filter(
   const { params } = benchmarkConfig;
   const benchmarkModule = await import(benchmarkConfig.path);
   const benchmark = benchmarkModule[benchmarkConfig.key];
-  const benchmarkBasename = basename(benchmarkConfig.path);
+  const componentPath = benchmarkConfig.componentPath;
 
   let isDoneWarmup = false;
   const onStart = () => {
@@ -33,7 +33,7 @@ for (const benchmarkConfig of benchmarkConfigs.filter(
 
   for (const frameworkConfig of frameworkConfigs) {
     const componentModule = await import(
-      join(frameworkConfig.path, benchmarkBasename)
+      join(frameworkConfig.path, componentPath)
     ).catch(() => ({}));
     const component =
       componentModule[frameworkConfig.componentKey ?? "component"];

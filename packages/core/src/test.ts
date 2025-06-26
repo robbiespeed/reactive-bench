@@ -42,15 +42,15 @@ export async function runTestSuite(
       if (testFilter ? !testFilter(testName) : false) {
         continue;
       }
-      const benchmarkBasename = basename(testConfig.path);
-      if (fConfig.disabledTests?.includes(benchmarkBasename)) {
+      const componentPath = testConfig.componentPath;
+      if (fConfig.disabledTests?.includes(componentPath)) {
         console.log(`${testName}: DISABLED`);
         continue;
       }
       const frameworkPath = fConfig.path;
       const response = await runMain({
         componentConfig: {
-          path: join(frameworkPath, benchmarkBasename),
+          path: join(frameworkPath, componentPath),
           key: fConfig.componentKey ?? "component",
         },
         testConfig,

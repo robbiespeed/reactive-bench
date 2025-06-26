@@ -286,7 +286,7 @@ export async function runBenchmarkSuite(
     if (benchmarkFilter ? !benchmarkFilter(benchName) : false) {
       continue;
     }
-    const benchmarkBasename = basename(benchmarkConfig.path);
+    const benchmarkBasename = benchmarkConfig.componentPath;
     const resultsGroup = new Map<string, BenchmarkResult[]>();
     const warmupCounts = new Map<string, number>();
     benchmarksGroup.set(benchName, resultsGroup);

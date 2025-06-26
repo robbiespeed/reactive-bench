@@ -50,12 +50,14 @@ export const cellx = (
 
 const path = "@reactive-bench/core/tests/cellx.ts";
 const key = "cellx";
+const componentPath = "cellx.ts";
 
 export const cellxTestConfigs: TestConfig[] = [
   {
     name: "cellx (1)",
     path,
     key,
+    componentPath,
     params: {
       value: 3,
       xSize: 5,
@@ -81,6 +83,7 @@ export const cellxTestConfigs: TestConfig[] = [
     name: "cellx (2)",
     path,
     key,
+    componentPath,
     params: {
       value: 7,
       xSize: 6,

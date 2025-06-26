@@ -39,6 +39,7 @@ export const tableTestConfigs: TestConfig[] = [
     name: "table run",
     path,
     key: "tableRun",
+    componentPath: "table.ts",
     params: {
       appendSize: 2,
       expectedData: [
