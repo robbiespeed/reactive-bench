@@ -23,6 +23,7 @@
     "noUnusedLocals": true,
     "useDefineForClassFields": true,
     "useUnknownInCatchVariables": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "inlineSourceMap": true
   }
 }

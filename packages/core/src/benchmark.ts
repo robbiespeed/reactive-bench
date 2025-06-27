@@ -13,7 +13,7 @@ import {
   type ProcessedRecord,
 } from "#lib/stats";
 import { runWorker } from "#lib/worker-utils";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 
 export interface BenchmarkResult {
   setupTime: number;

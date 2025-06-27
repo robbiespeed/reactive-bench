@@ -3,7 +3,6 @@ import type {
   ProjectionFanInProps,
 } from "#lib/benchmarks/projection/fan-in";
 import type { TestConfig } from "#lib/config";
-import { deepEqual } from "node:assert";
 
 export interface ProjectionFanInTestParams {
   depthSize: number;
@@ -82,7 +81,7 @@ export const projectionFanInTestConfigs: TestConfig[] = [
       depthSize: 6,
       fanSize: 6,
       input: 8,
-      expectedResults: [2,4],
+      expectedResults: [2, 4],
       expectedTail: 4,
     } satisfies ProjectionFanInTestParams,
   },

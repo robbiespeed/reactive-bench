@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "include": ["./src/**/*"],
+  "exclude": ["./src/frameworks/metron-projection/**/*"],
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./lib",

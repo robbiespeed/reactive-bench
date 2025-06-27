@@ -1,5 +1,5 @@
 import type { FrameworkConfig, TestConfig, TestSuiteItem } from "#lib/config";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import type { Component } from "#lib/component";
 
 function logTestResponse(

@@ -10,8 +10,17 @@
       "type": "node",
       "cwd": "${workspaceFolder}",
       "env": {},
+      "sourceMaps": true,
+      "pauseForSourceMap": true,
+      // "resolveSourceMapLocations": [
+      //   "${workspaceFolder}/**",
+      //   "!**/node_modules/**"
+      // ],
+      "sourceMapPathOverrides": {
+        "/workspaces/forks/reactive-compute-benchmark/*": "${workspaceFolder}/*"
+      },
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "test-debug", "-f", "metron-z"],
+      "runtimeArgs": ["run", "test-debug", "-f", "r3-lazy", "-t", "cellx (2)"],
       "attachSimplePort": 9229
     },
     {

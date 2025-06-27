@@ -112,6 +112,10 @@ export const frameworkConfigs: FrameworkConfig[] = [
     path: `${fwPrefix}/r3-r`,
   },
   {
+    name: "r3-lazy",
+    path: `${fwPrefix}/r3-lazy`,
+  },
+  {
     name: "toy-hooks",
     path: `${fwPrefix}/toy-hooks`,
   },

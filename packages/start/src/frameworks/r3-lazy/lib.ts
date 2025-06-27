@@ -4,11 +4,10 @@ export interface Disposable {
 
 export const enum ReactiveFlags {
   None = 0,
-  Check = 1 << 0,
-  Dirty = 1 << 1,
-  RecomputingDeps = 1 << 2,
-  InHeap = 1 << 3,
-  DidRunInFallback = 1 << 4,
+  Dirty = 1 << 0,
+  RecomputingDeps = 1 << 1,
+  InHeap = 1 << 2,
+  DidRunInFallback = 1 << 3,
 }
 
 export interface Link {
@@ -49,6 +48,7 @@ let minDirty = Infinity;
 let maxDirty = 0;
 let nextMaxDirty = 0;
 let contextHeight = 0;
+let isHeapQueued = false;
 const dirtyHeap: (Computed<unknown> | undefined)[] = new Array(2000);
 export function increaseHeapSize(n: number) {
   if (n > dirtyHeap.length) {
@@ -56,14 +56,11 @@ export function increaseHeapSize(n: number) {
   }
 }
 
-function insertIntoHeap(n: Computed<unknown>) {
+export function insertIntoHeap(n: Computed<unknown>) {
+  isHeapQueued = true;
   const flags = n.flags;
   if (flags & (ReactiveFlags.InHeap | ReactiveFlags.RecomputingDeps)) return;
-  if (flags & ReactiveFlags.Check) {
-    n.flags = (flags ^ ReactiveFlags.Check) | ReactiveFlags.InHeap;
-  } else {
-    n.flags = flags | ReactiveFlags.InHeap;
-  }
+  n.flags = flags | ReactiveFlags.InHeap;
   const height = n.height;
   const heapAtHeight = dirtyHeap[height];
   if (heapAtHeight === undefined) {
@@ -115,22 +112,14 @@ export function computed<T>(fn: () => T): Computed<T> {
     depsTail: null,
     subs: null,
     subsTail: null,
-    flags: ReactiveFlags.None,
+    flags: ReactiveFlags.Dirty,
     context,
   };
   self.prevHeap = self;
   if (context) {
     self.height = contextHeight + 1;
-    if (context.depsTail === null) {
-      recompute(self, false);
-    } else {
-      insertIntoHeap(self);
-    }
     link(self, context);
-  } else {
-    recompute(self, false);
   }
-
   return self;
 }
 
@@ -154,9 +143,8 @@ export function signal<T>(
   }
 }
 
-function recompute(el: Computed<unknown>, del: boolean) {
+function recompute(el: Computed<unknown>) {
   deleteFromHeap(el);
-
   runDisposal(el);
   const oldContext = context;
   const oldWorkingHeight = contextHeight;
@@ -210,16 +198,13 @@ function recompute(el: Computed<unknown>, del: boolean) {
 
 const clearStabilizeStack: Computed<unknown>[] = [];
 
-// let c = 0;
-
 function updateIfNecessary(el: Computed<unknown>): void {
   const linkStack: Link[] = [];
-  const computeStack: Computed<unknown>[] = [el];
+  const computeStack: Computed<unknown>[] = [];
   let link = el.deps ?? undefined;
   let node: Signal<unknown> | Computed<unknown> | undefined;
   while (link) {
     while (link) {
-      // c++;
       node = link.dep;
       node = ("owner" in node ? node.owner : node) as Computed<unknown> | RawSignal<unknown>;
       const next: Link | undefined = link.nextDep ?? undefined;
@@ -249,18 +234,19 @@ function updateIfNecessary(el: Computed<unknown>): void {
     link = linkStack.pop();
     for (let i = computeStack.length - 1; i >= 0; i--) {
       const node = computeStack[i]!;
-      if (node.flags & ReactiveFlags.Dirty) {
-        recompute(node, true);
-      } else if (node.flags & ReactiveFlags.InHeap) {
-        recompute(node, false);
+      if (node.flags & (ReactiveFlags.Dirty | ReactiveFlags.InHeap)) {
+        recompute(node);
       } else {
         el.flags &= ReactiveFlags.InHeap | ReactiveFlags.DidRunInFallback;
       }
     }
     computeStack.length = 0;
   }
-  // console.log("uin", c, el.fn.name, el.height);
-  // c = 0;
+  if (el.flags & (ReactiveFlags.Dirty | ReactiveFlags.InHeap)) {
+    recompute(el);
+  } else {
+    el.flags &= ReactiveFlags.InHeap | ReactiveFlags.DidRunInFallback;
+  }
 }
 
 // https://github.com/stackblitz/alien-signals/blob/v2.0.3/src/system.ts#L100
@@ -365,20 +351,22 @@ function isValidLink(checkLink: Link, sub: Computed<unknown>): boolean {
 export function read<T>(el: Signal<T> | Computed<T>): T {
   if (context) {
     link(el, context);
-    const owner = "owner" in el ? el.owner : el;
-    if ("fn" in owner) {
-      // console.log("ctx read owner (start)", context.fn.name, owner.fn.name, owner.height);
-      if (
-        owner.height >= minDirty ||
-        owner.flags & (ReactiveFlags.Dirty | ReactiveFlags.Check)
-      ) {
-        updateIfNecessary(owner);
-      }
+  }
+  const owner = "owner" in el ? el.owner : el;
+  if ("fn" in owner) {
+    if (owner.flags & (ReactiveFlags.Dirty | ReactiveFlags.InHeap)) {
+      recompute(owner);
+    } else if (
+      isHeapQueued &&
+      owner.height >= minDirty
+    ) {
+      updateIfNecessary(owner);
+    }
+    if (context) {
       const height = owner.height;
       if (height >= contextHeight) {
         contextHeight = height + 1;
       }
-      // console.log("ctx read owner (end)", context.fn.name, owner.fn.name, owner.height);
     }
   }
   return el.value;
@@ -393,20 +381,22 @@ export function setSignal(el: Signal<unknown>, v: unknown) {
 }
 
 export function stabilize() {
+  if (!isHeapQueued) {
+    return;
+  }
   for (minDirty = 0; minDirty <= maxDirty; minDirty++) {
     let el = dirtyHeap[minDirty];
-    dirtyHeap[minDirty] = undefined;
     while (el !== undefined) {
-      const next = el.nextHeap;
       if (el.flags & ReactiveFlags.InHeap) {
-        recompute(el, false);
+        recompute(el);
       }
-      el = next;
+      el = dirtyHeap[minDirty];
     }
   }
   for (let i = clearStabilizeStack.length - 1; i >= 0; i--) {
     clearStabilizeStack[i]!.flags ^= ReactiveFlags.DidRunInFallback;
   }
+  isHeapQueued = false;
   clearStabilizeStack.length = 0;
   minDirty = Infinity;
   maxDirty = nextMaxDirty;
