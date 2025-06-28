@@ -1,4 +1,4 @@
-import { computed, read, setSignal, type Signal, signal, stabilize, insertIntoHeap } from "./lib.js";
+import { computed, read, setSignal, type Signal, signal, stabilize } from "./lib.js";
 import type { CellXComponent } from "@reactive-bench/core/benchmarks/cellx.ts";
 
 export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
@@ -8,11 +8,9 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
   for (let y = 0; y < ySize; y++) {
     const source = signal(-1);
 
-    const e = computed(() => {
+    disposers.push(computed(() => {
       recordResult(0, y, read(source));
-    });
-    insertIntoHeap(e);
-    disposers.push(e);
+    }, true));
 
     const yRow: Signal<number>[] = [source];
     sources.push(source);
@@ -25,11 +23,9 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
     const prevLayer = layer;
     const top = computed(() => read(prevLayer[1]!));
 
-    const topEffect = computed(() => {
+    disposers.push(computed(() => {
       recordResult(x, 0, read(top));
-    });
-    insertIntoHeap(topEffect);
-    disposers.push(topEffect);
+    }, true));
 
     body[0]!.push(top);
     layer = [top];
@@ -40,22 +36,18 @@ export const component: CellXComponent = ({ recordResult, xSize, ySize }) => {
         y % 2 === 0 ? () => read(a) + read(b) : () => read(a) - read(b)
       );
 
-      const midEffect = computed(() => {
+      disposers.push(computed(() => {
         recordResult(x, y, read(c));
-      });
-      insertIntoHeap(midEffect);
-      disposers.push(midEffect);
+      }, true));
 
       body[y]!.push(c);
       layer.push(c);
     }
     const bottom = computed(() => read(prevLayer[bottomY - 1]!));
 
-    const bottomEffect = computed(() => {
+    disposers.push(computed(() => {
       recordResult(x, bottomY, read(bottom));
-    });
-    insertIntoHeap(bottomEffect);
-    disposers.push(bottomEffect);
+    }, true));
 
     body[bottomY]!.push(bottom);
     layer.push(bottom);

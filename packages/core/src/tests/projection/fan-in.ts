@@ -3,6 +3,7 @@ import type {
   ProjectionFanInProps,
 } from "#lib/benchmarks/projection/fan-in";
 import type { TestConfig } from "#lib/config";
+import { deepEqual } from "node:assert";
 
 export interface ProjectionFanInTestParams {
   depthSize: number;
@@ -33,11 +34,10 @@ export const projectionFanIn = (
   });
   controller.runDeferred?.();
   controller.getTail();
-  console.log("Do write");
   controller.writeInput(input);
   controller.runDeferred?.();
-  // deepEqual(results, expectedResults);
-  // deepEqual(controller.getTail(), expectedTail);
+  deepEqual(results, expectedResults);
+  deepEqual(controller.getTail(), expectedTail);
   controller.cleanup?.();
 };
 
@@ -81,8 +81,8 @@ export const projectionFanInTestConfigs: TestConfig[] = [
       depthSize: 6,
       fanSize: 6,
       input: 8,
-      expectedResults: [2, 4],
-      expectedTail: 4,
+      expectedResults: [-1, 26],
+      expectedTail: 26,
     } satisfies ProjectionFanInTestParams,
   },
 ];

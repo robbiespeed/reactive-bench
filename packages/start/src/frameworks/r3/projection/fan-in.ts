@@ -7,13 +7,25 @@ export const component: ProjectionFanInComponent = ({
   fanSize,
 }) => {
   const head = signal(-1);
+  const fanInputs: Signal<number>[] = [];
+  for (let i = 0; i < fanSize; i++) {
+    const input = signal(i);
+    fanInputs.push(input);
+  }
+  const chainStart = computed(function cs() {
+    let v = read(head);
+    for (let i = 0; i < fanSize; i++) {
+      v += read(fanInputs[i]!);
+    }
+    return v;
+  });
   const depthChainProjections: Computed<void>[] = [];
   const depthChainOutputs: Signal<number>[] = [];
-  
+
   for (let d = 0; d < depthSize; d++) {
-    const source: Signal<number> = d > 0 ? depthChainOutputs[d - 1]! : head;
+    const source: Signal<number> = d > 0 ? depthChainOutputs[d - 1]! : chainStart;
     let output!: Signal<number>;
-    const projection = computed(function chain (this: Computed<void>) {
+    const projection = computed(function chain(this: Computed<void>) {
       const v = read(source);
       if (output === undefined) {
         output = signal(v + d, this);
@@ -25,16 +37,12 @@ export const component: ProjectionFanInComponent = ({
     depthChainOutputs.push(output);
   }
 
-  const fanInputs: Signal<number>[] = [];
-  for (let i = 0; i < fanSize; i++) {
-    const input = signal(i);
-    fanInputs.push(input);
-  }
+
 
   let fanOutput!: Signal<number>;
-  computed(function fan (this: Computed<void>) {
+  computed(function fan(this: Computed<void>) {
     const h = read(head);
-    
+
     let v: number = h;
     if (h >= 0) {
       const chainSource = depthChainOutputs[h % depthSize];
@@ -44,12 +52,6 @@ export const component: ProjectionFanInComponent = ({
         // console.log(this.height);
       }
     }
-
-    for (let i = 0; i < fanSize; i++) {
-      v += read(fanInputs[i]!);
-    }
-
-    v = Math.floor(v / fanSize);
 
     if (fanOutput === undefined) {
       fanOutput = signal(v, this);

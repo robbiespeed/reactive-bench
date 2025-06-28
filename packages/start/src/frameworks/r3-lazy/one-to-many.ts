@@ -23,7 +23,7 @@ export const component: OneToManyComponent = ({
       effects.push(
         computed(() => {
           recordResult(y, read(lastRead));
-        })
+        }, true)
       );
     }
   }
@@ -41,7 +41,7 @@ export const component: OneToManyComponent = ({
       setSignal(head, v);
     },
     getBody() {
-      return body.map((row) => row.map((s) => s.value));
+      return body.map((row) => row.map((s) => read(s)));
     },
   };
 };

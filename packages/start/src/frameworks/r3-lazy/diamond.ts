@@ -11,7 +11,7 @@ export const component: DiamondComponent = ({ recordResult, size }) => {
 
   computed(() => {
     recordResult(read(sum));
-  });
+  }, true);
 
   return {
     // cleanup: () => {
@@ -24,10 +24,10 @@ export const component: DiamondComponent = ({ recordResult, size }) => {
       setSignal(head, v);
     },
     getSum() {
-      return sum.value;
+      return read(sum);
     },
     getBody() {
-      return body.map((s) => s.value);
+      return body.map((s) => read(s));
     },
   };
 };
