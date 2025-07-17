@@ -26,9 +26,14 @@ export const cellx = (
   controller.runDeferred?.();
   equal(results.length, ySize * xSize);
   results.length = 0;
+  const rows: number[][] = [];
+  // for (let y = 0; y < ySize; y++) {
+  //   rows.push(controller.getRow(y));
+  // }
+  // console.log(rows);
   controller.writeAll(value);
   controller.runDeferred?.();
-  const rows: number[][] = [];
+  rows.length = 0;
   for (let y = 0; y < ySize; y++) {
     rows.push(controller.getRow(y));
   }

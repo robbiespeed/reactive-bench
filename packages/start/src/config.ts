@@ -65,16 +65,21 @@ export const frameworkConfigs: FrameworkConfig[] = [
   //   path: `${fwPrefix}/metron-zzyyx`,
   //   componentKey: "mapManaged",
   // },
+  {
+    name: "metron-zzyyxl",
+    path: `${fwPrefix}/metron-zzyyxl`,
+  },
   // {
   //   name: "metron-zzyyxl (managed)",
   //   path: `${fwPrefix}/metron-zzyyxl`,
   //   componentKey: "managed",
   // },
-  {
-    name: "metron-zzyyxl (sd managed)",
-    path: `${fwPrefix}/metron-zzyyxl`,
-    componentKey: "staticDerive",
-  },
+  // !!! Static Derive is king !!!
+  // {
+  //   name: "metron-zzyyxl (sd managed)",
+  //   path: `${fwPrefix}/metron-zzyyxl`,
+  //   componentKey: "staticDerive",
+  // },
   // {
   //   name: "metron-zzyyxl (map managed)",
   //   path: `${fwPrefix}/metron-zzyyxl`,
@@ -104,17 +109,30 @@ export const frameworkConfigs: FrameworkConfig[] = [
     path: `${fwPrefix}/alien-signals`,
   },
   {
+    name: "metron projection",
+    path: `${fwPrefix}/metron-projection`,
+  },
+  // {
+  //   name: "metron projection (managed)",
+  //   path: `${fwPrefix}/metron-projection`,
+  //   componentKey: "managed",
+  // },
+  {
     name: "r3",
     path: `${fwPrefix}/r3`,
   },
-  {
-    name: "r3-r",
-    path: `${fwPrefix}/r3-r`,
-  },
+  // {
+  //   name: "r3-r",
+  //   path: `${fwPrefix}/r3-r`,
+  // },
   {
     name: "r3-lazy",
     path: `${fwPrefix}/r3-lazy`,
   },
+  // {
+  //   name: "r3-lazy-array-heaps",
+  //   path: `${fwPrefix}/r3-lazy-array-heaps`,
+  // },
   {
     name: "toy-hooks",
     path: `${fwPrefix}/toy-hooks`,

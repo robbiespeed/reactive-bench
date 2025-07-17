@@ -10,6 +10,8 @@ export const enum ReactiveFlags {
   InFallbackHeap = 1 << 3,
 }
 
+const NonHeapFlags = ReactiveFlags.Dirty | ReactiveFlags.RecomputingDeps;
+
 export interface Link {
   dep: Signal<unknown> | Computed<unknown>;
   sub: Computed<unknown>;
@@ -36,8 +38,6 @@ export interface Computed<T> extends RawSignal<T> {
   flags: ReactiveFlags;
   context: Computed<unknown> | null;
   height: number;
-  nextHeap: Computed<unknown> | undefined;
-  prevHeap: Computed<unknown>;
   disposal: Disposable | Disposable[] | null;
   fn: () => T;
 }
@@ -49,8 +49,8 @@ let maxDirty = 0;
 let nextMaxDirty = 0;
 let contextHeight = 0;
 let heapSize = 0;
-let fallbackHeap: Computed<unknown> | undefined = undefined;
-const dirtyHeap: (Computed<unknown> | undefined)[] = new Array(2000);
+let fallbackHeap: Computed<unknown>[] = [];
+const dirtyHeap: (Computed<unknown>[] | undefined)[] = new Array(2000);
 export function increaseHeapSize(n: number) {
   if (n > dirtyHeap.length) {
     dirtyHeap.length = n;
@@ -60,36 +60,10 @@ export function increaseHeapSize(n: number) {
 function insertIntoHeap(n: Computed<unknown>) {
   let flags = n.flags;
   if (flags & (ReactiveFlags.InHeap | ReactiveFlags.RecomputingDeps)) return;
-  if (flags & ReactiveFlags.InFallbackHeap) {
-    // flags ^= ReactiveFlags.InFallbackHeap;
-    if (n.prevHeap === n) {
-      fallbackHeap = undefined;
-    } else {
-      const next = n.nextHeap;
-      const dhh = fallbackHeap!;
-      const end = next ?? dhh;
-      if (n === dhh) {
-        fallbackHeap = next;
-      } else {
-        n.prevHeap.nextHeap = next;
-      }
-      end.prevHeap = n.prevHeap;
-    }
-    n.prevHeap = n;
-    n.nextHeap = undefined;
-  }
   heapSize++;
-  n.flags = flags | ReactiveFlags.InHeap;
+  n.flags = (flags & NonHeapFlags) | ReactiveFlags.InHeap;
   const height = n.height;
-  const heapAtHeight = dirtyHeap[height];
-  if (heapAtHeight === undefined) {
-    dirtyHeap[height] = n;
-  } else {
-    const tail = heapAtHeight.prevHeap;
-    tail.nextHeap = n;
-    n.prevHeap = tail;
-    heapAtHeight.prevHeap = n;
-  }
+  (dirtyHeap[height] ??= []).push(n);
   if (height > maxDirty) {
     maxDirty = height;
   } else if (height <= minDirty) {
@@ -100,39 +74,15 @@ function insertIntoHeap(n: Computed<unknown>) {
 function moveToFallbackHeap(n: Computed<unknown>) {
   const flags = n.flags;
   if (flags & ReactiveFlags.InFallbackHeap) return;
-  deleteFromHeap(n);
-  n.flags |= ReactiveFlags.InFallbackHeap;
-  if (fallbackHeap === undefined) {
-    fallbackHeap = n;
-  } else {
-    const tail = fallbackHeap.prevHeap;
-    tail.nextHeap = n;
-    n.prevHeap = tail;
-    fallbackHeap.prevHeap = n;
-  }
+  n.flags = (flags & NonHeapFlags) | ReactiveFlags.InFallbackHeap;
+  fallbackHeap.push(n);
 }
 
 function deleteFromHeap(n: Computed<unknown>) {
   const flags = n.flags;
   if (!(flags & ReactiveFlags.InHeap)) return;
   heapSize--;
-  n.flags = flags & ~ReactiveFlags.InHeap;
-  const height = n.height;
-  if (n.prevHeap === n) {
-    dirtyHeap[height] = undefined;
-  } else {
-    const next = n.nextHeap;
-    const dhh = dirtyHeap[height]!;
-    const end = next ?? dhh;
-    if (n === dhh) {
-      dirtyHeap[height] = next;
-    } else {
-      n.prevHeap.nextHeap = next;
-    }
-    end.prevHeap = n.prevHeap;
-  }
-  n.prevHeap = n;
-  n.nextHeap = undefined;
+  n.flags = flags & NonHeapFlags;
 }
 
 export function computed<T>(fn: () => T, isEager = false): Computed<T> {
@@ -141,8 +91,6 @@ export function computed<T>(fn: () => T, isEager = false): Computed<T> {
     fn: fn,
     value: undefined as T,
     height: 0,
-    nextHeap: undefined,
-    prevHeap: null as any,
     deps: null,
     depsTail: null,
     subs: null,
@@ -150,7 +98,6 @@ export function computed<T>(fn: () => T, isEager = false): Computed<T> {
     flags: ReactiveFlags.Dirty,
     context,
   };
-  self.prevHeap = self;
   if (context) {
     self.height = contextHeight + 1;
     link(self, context);
@@ -188,21 +135,22 @@ function recompute(el: Computed<unknown>) {
   contextHeight = el.context ? el.context.height + 1 : 0;
   context = el;
   el.depsTail = null;
-  el.flags |= ReactiveFlags.RecomputingDeps;
+  if (el.flags & ReactiveFlags.InHeap) {
+    heapSize--;
+  }
+  el.flags = NonHeapFlags;
   let didNotError = true;
   let value;
   try {
     value = el.fn();
-  } catch {
+  } catch (cause) {
+    // console.error(cause);
     didNotError = false;
   }
   if (el.height < contextHeight) {
+    el.height = contextHeight;
     if (el.flags & ReactiveFlags.InHeap) {
-      deleteFromHeap(el);
-      el.height = contextHeight;
-      insertIntoHeap(el);
-    } else {
-      el.height = contextHeight;
+      (dirtyHeap[contextHeight] ??= []).push(el);
     }
   }
   el.flags &= ReactiveFlags.InHeap | ReactiveFlags.InFallbackHeap;
@@ -274,16 +222,14 @@ function updateIfNecessary(el: Computed<unknown>): void {
     for (let i = computeStack.length - 1; i >= 0; i--) {
       const node = computeStack[i]!;
       if (node.flags & (ReactiveFlags.Dirty | ReactiveFlags.InHeap)) {
-        deleteFromHeap(el);
         recompute(node);
       } else {
-        el.flags &= ReactiveFlags.InHeap | ReactiveFlags.InFallbackHeap;
+        node.flags &= ReactiveFlags.InHeap | ReactiveFlags.InFallbackHeap;
       }
     }
     computeStack.length = 0;
   }
   if (el.flags & (ReactiveFlags.Dirty | ReactiveFlags.InHeap)) {
-    deleteFromHeap(el);
     recompute(el);
   } else {
     el.flags &= ReactiveFlags.InHeap | ReactiveFlags.InFallbackHeap;
@@ -396,7 +342,6 @@ export function read<T>(el: Signal<T> | Computed<T>): T {
   const owner = "owner" in el ? el.owner : el;
   if ("fn" in owner) {
     if (owner.flags & (ReactiveFlags.Dirty | ReactiveFlags.InHeap)) {
-      deleteFromHeap(owner);
       recompute(owner);
     } else if (
       heapSize > 0 &&
@@ -417,14 +362,15 @@ export function read<T>(el: Signal<T> | Computed<T>): T {
 // Is the fallback heap actually worth it?
 // The alternative is that unstable reads simply walk their source tree
 // stopping at dirty or heaped nodes
+
+const NonFallbackFlags = ReactiveFlags.Dirty | ReactiveFlags.RecomputingDeps | ReactiveFlags.InHeap;
+
 function clearFallbackHeap() {
-  while (fallbackHeap !== undefined) {
-    fallbackHeap.flags ^= ReactiveFlags.InFallbackHeap;
-    const prevFallbackHeap = fallbackHeap;
-    fallbackHeap = fallbackHeap.nextHeap;
-    prevFallbackHeap.prevHeap = prevFallbackHeap;
-    prevFallbackHeap.nextHeap = undefined;
+  for (let i = fallbackHeap.length - 1; i >= 0; i--) {
+    const node = fallbackHeap[i]!;
+    node.flags = node.flags & NonFallbackFlags;
   }
+  fallbackHeap.length = 0;
 }
 
 export function setSignal(el: Signal<unknown>, v: unknown) {
@@ -440,13 +386,17 @@ export function stabilize() {
   if (!heapSize) {
     return;
   }
+  let heap: Computed<any>[];
+  let el: Computed<any>;
   for (minDirty = 0; minDirty <= maxDirty; minDirty++) {
-    let el = dirtyHeap[minDirty];
-    while (el !== undefined) {
-      deleteFromHeap(el);
-      recompute(el);
-      el = dirtyHeap[minDirty];
+    heap = dirtyHeap[minDirty]!;
+    for (let i = 0; i < heap.length; i++) {
+      el = heap[i]!;
+      if ((el.flags & ReactiveFlags.InHeap) && el.height === minDirty) {
+        recompute(el);
+      }
     }
+    heap.length = 0;
   }
   clearFallbackHeap();
   minDirty = Infinity;

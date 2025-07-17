@@ -20,7 +20,7 @@
         "/workspaces/forks/reactive-compute-benchmark/*": "${workspaceFolder}/*"
       },
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "test-debug", "-f", "r3-lazy", "-t", "cellx (2)"],
+      "runtimeArgs": ["run", "test-debug", "-f", "metron p", "-t", "fan out"],
       "attachSimplePort": 9229
     },
     {
