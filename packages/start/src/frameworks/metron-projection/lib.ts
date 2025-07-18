@@ -64,13 +64,13 @@ OwnedReceiveStabilize
 */
 
 const ATOM_FLAG_NONE = 0;
-const ATOM_FLAG_STABILIZE = 1;
+const ATOM_FLAG_DEFER = 1;
 const ATOM_FLAG_DIRTY = 1 << 1;
 const ATOM_FLAG_IN_HEAP = 1 << 2;
 const ATOM_FLAG_IN_FALLBACK_HEAP = 1 << 3;
 const ATOM_FLAG_IN_RECEIVE = 1 << 4;
 
-const ATOM_FLAG_NON_HEAP = ATOM_FLAG_STABILIZE | ATOM_FLAG_DIRTY | ATOM_FLAG_IN_RECEIVE;
+const ATOM_FLAG_NON_HEAP = ATOM_FLAG_DEFER | ATOM_FLAG_DIRTY | ATOM_FLAG_IN_RECEIVE;
 
 class Atom<TValue = unknown> {
   _flags = ATOM_FLAG_NONE;
@@ -102,9 +102,14 @@ class ReceiveAtom<TValue = unknown> extends Atom<TValue> {
   _fn: (read: Reader) => TValue;
   _depth = -1;
   _receiver: Receiver | undefined;
-  constructor(fn: (read: Reader) => TValue, stabilize = false) {
+  constructor(fn: (read: Reader) => TValue, isDeferred = false) {
     super(undefined as TValue);
-    this._flags = stabilize ? ATOM_FLAG_DIRTY | ATOM_FLAG_STABILIZE : ATOM_FLAG_DIRTY;
+    if (isDeferred) {
+      this._depth = 0;
+      this._flags = ATOM_FLAG_DIRTY | ATOM_FLAG_DEFER;
+    } else {
+      this._flags = ATOM_FLAG_DIRTY;
+    }
     this._fn = fn;
   }
   manage(): Disposer {
@@ -285,10 +290,10 @@ function emit(atom: Atom): undefined {
   }
 }
 
+let transmitStack: Link[] = [];
 function transmit(atom: Atom): undefined {
   emit(atom);
 
-  const stack: Link[] = [];
   let link = atom._consumerHead;
   let consumer: Receiver;
   let nextConsumerLink: Link | undefined;
@@ -328,21 +333,21 @@ function transmit(atom: Atom): undefined {
       }
       consumer._scheduleCleaning();
 
-      if (consumerAtom._flags & ATOM_FLAG_STABILIZE) {
+      if (consumerAtom._flags & ATOM_FLAG_DEFER) {
         insertIntoHeap(consumerAtom);
-      }
-
-      const childLinks = consumerAtom._consumerHead;
-      if (childLinks !== undefined) {
-        if (nextConsumerLink !== undefined) {
-          stack.push(nextConsumerLink);
+      } else {
+        const childLinks = consumerAtom._consumerHead;
+        if (childLinks !== undefined) {
+          if (nextConsumerLink !== undefined) {
+            transmitStack.push(nextConsumerLink);
+          }
+          link = childLinks;
+          continue;
         }
-        link = childLinks;
-        continue;
       }
     }
 
-    link = nextConsumerLink ?? stack.pop();
+    link = nextConsumerLink ?? transmitStack.pop();
   }
 }
 
@@ -357,12 +362,8 @@ function receive<T>(receiveAtom: ReceiveAtom<T>) {
   const receiver = (receiveAtom._receiver ??= createReceiver(
     new WeakRef(receiveAtom)
   )) as Receiver;
-  const stabilizeFlag = receiveAtom._flags & ATOM_FLAG_STABILIZE;
-  receiveAtom._flags = stabilizeFlag | ATOM_FLAG_IN_RECEIVE;
-  if (stabilizeFlag && receiveAtom._depth === -1) {
-    // initialize depth
-    receiveAtom._depth = 0;
-  }
+  const deferFlag = receiveAtom._flags & ATOM_FLAG_DEFER;
+  receiveAtom._flags = deferFlag | ATOM_FLAG_IN_RECEIVE;
 
   const version = receiver._version;
   const read: Reader = <T>(atom: Atom<T> | ReceiveAtom<T>) => {
@@ -374,7 +375,7 @@ function receive<T>(receiveAtom: ReceiveAtom<T>) {
     const owner = atom._owner;
     if (owner !== undefined) {
       stabilizeReceiveAtom(owner);
-      if (stabilizeFlag) {
+      if (deferFlag) {
         if (receiveAtom._depth <= owner._depth) {
           receiveAtom._depth = owner._depth + 1;
         }
@@ -384,7 +385,7 @@ function receive<T>(receiveAtom: ReceiveAtom<T>) {
     }
     if ("_fn" in atom) {
       stabilizeReceiveAtom(atom);
-      if (stabilizeFlag) {
+      if (deferFlag) {
         if (receiveAtom._depth <= atom._depth) {
           receiveAtom._depth = atom._depth + 1;
         }
@@ -394,8 +395,16 @@ function receive<T>(receiveAtom: ReceiveAtom<T>) {
     }
     return atom._value;
   };
-  receiveAtom._value = receiveAtom._fn(read);
-  receiveAtom._flags = stabilizeFlag;
+  if (deferFlag) {
+    const prevValue = receiveAtom._value;
+    receiveAtom._value = receiveAtom._fn(read);
+    if (receiveAtom._value !== prevValue && version !== 0) {
+      transmit(receiveAtom);
+    }
+  } else {
+    receiveAtom._value = receiveAtom._fn(read);
+  }
+  receiveAtom._flags = deferFlag;
 }
 
 function disposeReceiver(atom: ReceiveAtom) {
@@ -459,6 +468,7 @@ function clearFallbackHeap() {
 
 function stabilizeFallback(rootAtom: ReceiveAtom) {
   // console.log("Hitting fallback");
+  console.error(new Error("Hit Fallback"));
   const linkStack: Link[] = [];
   const receiveStack: ReceiveAtom[] = [];
   let link = rootAtom._receiver!._sourceHead ?? undefined;
@@ -530,9 +540,12 @@ export function stabilize() {
   let atom: ReceiveAtom;
   for (
     heap = stabilizeHeaps[minHeap];
-    heap !== undefined && minHeap <= maxHeap;
-    stabilizeHeaps[minHeap++]
+    minHeap <= maxHeap;
+    heap = stabilizeHeaps[++minHeap]
   ) {
+    if (heap === undefined) {
+      continue;
+    }
     for (let i = 0; i < heap.length; i++) {
       atom = heap[i]!;
       if ((atom._flags & ATOM_FLAG_IN_HEAP) && atom._depth === minHeap) {
@@ -630,5 +643,5 @@ export type { Atom as StateAtom, ReceiveAtom as DeriveAtom };
 export { Atom };
 
 export const state = <T>(initialValue: T) => new Atom<T>(initialValue);
-export const derive = <T>(derivation: (read: Reader) => T, stabilize = false) => new ReceiveAtom<T>(derivation, stabilize);
+export const derive = <T>(derivation: (read: Reader) => T, isDeferred = false) => new ReceiveAtom<T>(derivation, isDeferred);
 export const channel = new EmitChannel(() => { });

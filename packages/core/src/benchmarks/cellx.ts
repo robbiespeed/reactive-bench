@@ -30,18 +30,18 @@ const setup = (
   const controller = component({
     recordResult: effectComplexity
       ? () => {
-          fib(effectComplexity);
-        }
-      : () => {},
+        fib(effectComplexity);
+      }
+      : () => { },
     xSize,
     ySize,
   });
 
   controller.writeAll(-1);
+  controller.runDeferred?.();
   for (let y = 0; y < ySize; y++) {
     controller.getRow(y);
   }
-  controller.runDeferred?.();
 
   return controller;
 };

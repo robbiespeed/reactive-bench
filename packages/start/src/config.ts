@@ -112,6 +112,11 @@ export const frameworkConfigs: FrameworkConfig[] = [
     name: "metron projection",
     path: `${fwPrefix}/metron-projection`,
   },
+  {
+    name: "metron projection (deferred)",
+    path: `${fwPrefix}/metron-projection`,
+    componentKey: "deferred",
+  },
   // {
   //   name: "metron projection (managed)",
   //   path: `${fwPrefix}/metron-projection`,

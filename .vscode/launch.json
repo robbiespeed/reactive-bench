@@ -20,7 +20,7 @@
         "/workspaces/forks/reactive-compute-benchmark/*": "${workspaceFolder}/*"
       },
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "test-debug", "-f", "metron p", "-t", "fan out"],
+      "runtimeArgs": ["run", "test-debug", "-f", "projection (def", "-t", "cellx (2)"],
       "attachSimplePort": 9229
     },
     {
@@ -34,9 +34,9 @@
         "run",
         "bench-debug",
         "-f",
-        "metron-z",
+        "projection (def",
         "-b",
-        "to many (100x",
+        "cellx (write row by row read all 10x50)",
         "-m"
       ],
       "attachSimplePort": 9229
