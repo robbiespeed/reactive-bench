@@ -86,7 +86,9 @@ class Atom<TValue = unknown> {
     transmit(this);
   }
   unwrap(): TValue {
-    // TODO handle circular reading w ATOM_FLAG_IN_RECEIVE check
+    if (this._flags & ATOM_FLAG_IN_RECEIVE) {
+      throw new Error("Cannot unwrap atom while it is executing");
+    }
     const owner = this._owner;
     if (owner !== undefined) {
       stabilizeReceiveAtom(owner);
@@ -370,8 +372,10 @@ function receive<T>(receiveAtom: ReceiveAtom<T>) {
     if (version !== receiver._version) {
       throw new Error("Attempted to use expired read");
     }
+    if (atom._flags & ATOM_FLAG_IN_RECEIVE) {
+      throw new Error("Cannot read atom while it is executing");
+    }
     receiver._linkSource(atom);
-    // TODO handle circular reading w ATOM_FLAG_IN_RECEIVE check
     const owner = atom._owner;
     if (owner !== undefined) {
       stabilizeReceiveAtom(owner);
@@ -422,15 +426,13 @@ function disposeReceiver(atom: ReceiveAtom) {
 
 let minHeap = Infinity;
 let maxHeap = 0;
-let nextMaxHeap = 0;
-let heapSize = 0;
+let nextMaxHeap = -1;
 const fallbackHeap: ReceiveAtom[] = [];
 const stabilizeHeaps: (ReceiveAtom[] | undefined)[] = new Array(200);
 
 function insertIntoHeap(atom: ReceiveAtom) {
   const flags = atom._flags;
   if (flags & (ATOM_FLAG_IN_HEAP | ATOM_FLAG_IN_RECEIVE)) return;
-  heapSize++;
   atom._flags = (flags & ATOM_FLAG_NON_HEAP) | ATOM_FLAG_IN_HEAP;
   const depth = atom._depth;
   (stabilizeHeaps[depth] ??= []).push(atom);
@@ -441,6 +443,16 @@ function insertIntoHeap(atom: ReceiveAtom) {
   }
   if (depth < minHeap) {
     minHeap = depth;
+  }
+}
+
+function moveHeap(atom: ReceiveAtom) {
+  const depth = atom._depth;
+  (stabilizeHeaps[depth] ??= []).push(atom);
+  if (depth > maxHeap) {
+    maxHeap = depth;
+  } else if (depth <= minHeap) {
+    nextMaxHeap = depth;
   }
 }
 
@@ -467,8 +479,7 @@ function clearFallbackHeap() {
 }
 
 function stabilizeFallback(rootAtom: ReceiveAtom) {
-  // console.log("Hitting fallback");
-  console.error(new Error("Hit Fallback"));
+  // console.error(new Error("Hit Fallback"));
   const linkStack: Link[] = [];
   const receiveStack: ReceiveAtom[] = [];
   let link = rootAtom._receiver!._sourceHead ?? undefined;
@@ -532,31 +543,34 @@ function stabilizeReceiveAtom(atom: ReceiveAtom) {
 }
 
 export function stabilize() {
-  if (heapSize === 0) {
-    return;
-  }
-  clearFallbackHeap();
-  let heap: ReceiveAtom[] | undefined;
-  let atom: ReceiveAtom;
-  for (
-    heap = stabilizeHeaps[minHeap];
-    minHeap <= maxHeap;
-    heap = stabilizeHeaps[++minHeap]
-  ) {
-    if (heap === undefined) {
-      continue;
-    }
-    for (let i = 0; i < heap.length; i++) {
-      atom = heap[i]!;
-      if ((atom._flags & ATOM_FLAG_IN_HEAP) && atom._depth === minHeap) {
-        receive(atom);
+  while (maxHeap >= 0) {
+    clearFallbackHeap();
+    let heap: ReceiveAtom[] | undefined;
+    let atom: ReceiveAtom;
+    for (
+      heap = stabilizeHeaps[minHeap];
+      minHeap <= maxHeap;
+      heap = stabilizeHeaps[++minHeap]
+    ) {
+      if (heap === undefined) {
+        continue;
       }
+      for (let i = 0; i < heap.length; i++) {
+        atom = heap[i]!;
+        if ((atom._flags & ATOM_FLAG_IN_HEAP)) {
+          if (atom._depth === minHeap) {
+            receive(atom);
+          } else {
+            moveHeap(atom);
+          }
+        }
+      }
+      heap.length = 0;
     }
-    heap.length = 0;
+    minHeap = Infinity;
+    maxHeap = nextMaxHeap;
+    nextMaxHeap = -1;
   }
-  minHeap = Infinity;
-  maxHeap = nextMaxHeap;
-  nextMaxHeap = 0;
 }
 
 export function clean() {
