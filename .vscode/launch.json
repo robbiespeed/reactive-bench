@@ -20,7 +20,26 @@
         "/workspaces/forks/reactive-compute-benchmark/*": "${workspaceFolder}/*"
       },
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "test-debug", "-f", "projection (def", "-t", "cellx (2)"],
+      "runtimeArgs": ["run", "test-debug", "-f", "metron-v1"],
+      "attachSimplePort": 9229
+    },
+    {
+      "request": "launch",
+      "name": "Debug Fallback",
+      "type": "node",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "sourceMaps": true,
+      "pauseForSourceMap": true,
+      // "resolveSourceMapLocations": [
+      //   "${workspaceFolder}/**",
+      //   "!**/node_modules/**"
+      // ],
+      "sourceMapPathOverrides": {
+        "/workspaces/forks/reactive-compute-benchmark/*": "${workspaceFolder}/*"
+      },
+      "runtimeExecutable": "deno",
+      "runtimeArgs": ["run", "--inspect-brk", "--sloppy-imports", "./packages/start/src/frameworks/metron-1/fallback-test.ts"],
       "attachSimplePort": 9229
     },
     {

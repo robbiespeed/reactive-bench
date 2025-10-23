@@ -109,14 +109,22 @@ export const frameworkConfigs: FrameworkConfig[] = [
     path: `${fwPrefix}/alien-signals`,
   },
   {
-    name: "metron projection",
+    name: "metron-projection",
     path: `${fwPrefix}/metron-projection`,
   },
   {
-    name: "metron projection (deferred)",
-    path: `${fwPrefix}/metron-projection`,
-    componentKey: "deferred",
+    name: "metron-projection-strong",
+    path: `${fwPrefix}/metron-projection-strong`,
   },
+  {
+    name: "metron-v1",
+    path: `${fwPrefix}/metron-1`,
+  },
+  // {
+  //   name: "metron projection (deferred)",
+  //   path: `${fwPrefix}/metron-projection`,
+  //   componentKey: "deferred",
+  // },
   // {
   //   name: "metron projection (managed)",
   //   path: `${fwPrefix}/metron-projection`,

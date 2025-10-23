@@ -234,6 +234,8 @@ function recompute(el: Computed<unknown>) {
 }
 
 function updateIfNecessary(el: Computed<unknown>): void {
+  // console.warn("Stabilize Fallback");
+
   const linkStack: Link[] = [];
   const computeStack: Computed<unknown>[] = [];
   let link = el.deps ?? undefined;

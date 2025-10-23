@@ -86,6 +86,9 @@ class Atom<TValue = unknown> {
     transmit(this);
   }
   unwrap(): TValue {
+    if (this._flags & ATOM_FLAG_IN_RECEIVE) {
+      throw new Error("Cannot unwrap atom while it is executing");
+    }
     const owner = this._owner;
     if (owner !== undefined) {
       stabilizeReceiveAtom(owner);
@@ -98,12 +101,6 @@ class Atom<TValue = unknown> {
 }
 
 class ReceiveAtom<TValue = unknown> extends Atom<TValue> {
-  // class ReceiveAtom<TValue = unknown> {
-  // _flags = ATOM_FLAG_NONE;
-  // _value: TValue;
-  // _owner: ReceiveAtom | undefined = undefined;
-  // _consumerHead: Link | undefined;
-  // _subscriptionHead: Subscription | undefined;
   _fn: (read: Reader) => TValue;
   _depth = -1;
   _receiver: Receiver | undefined;
@@ -134,23 +131,6 @@ class ReceiveAtom<TValue = unknown> extends Atom<TValue> {
         (disposeReceiver(this), (active = false));
     };
   }
-  // set(value: TValue): undefined {
-  //   this._value = value;
-  //   transmit(this);
-  // }
-  // unwrap(): TValue {
-  //   if (this._flags & ATOM_FLAG_IN_RECEIVE) {
-  //     throw new Error("Cannot unwrap atom while it is executing");
-  //   }
-  //   const owner = this._owner;
-  //   if (owner !== undefined) {
-  //     stabilizeReceiveAtom(owner);
-  //   }
-  //   if ("_fn" in this) {
-  //     stabilizeReceiveAtom(this as any);
-  //   }
-  //   return this._value;
-  // }
 }
 
 let recycledLinkPool: RecycledLink | undefined;
@@ -161,9 +141,9 @@ class Receiver {
   _version = 0; // should this be replaced with a linker fn ref?
   _sourceHead: Link | undefined;
   _sourceTail: Link | undefined;
-  _transmitAtom: WeakRef<ReceiveAtom> | ReceiveAtom | undefined;
+  _transmitAtom: ReceiveAtom | undefined;
   _nextDirty: Receiver | undefined;
-  constructor(atom: WeakRef<ReceiveAtom> | ReceiveAtom) {
+  constructor(atom: ReceiveAtom) {
     this._transmitAtom = atom;
   }
   _linkSource(source: Atom): undefined {
@@ -290,7 +270,7 @@ function cleanReceiver(receiver: Receiver): undefined {
   }
 }
 
-function createReceiver(atom: ReceiveAtom | WeakRef<ReceiveAtom>): Receiver {
+function createReceiver(atom: ReceiveAtom): Receiver {
   if (recycledReceiverPool === undefined) {
     return new Receiver(atom);
   }
@@ -330,16 +310,16 @@ function transmit(atom: Atom): undefined {
       if (consumerAtom === undefined) {
         break consumerHandler;
       }
-      if ("deref" in consumerAtom) {
-        consumerAtom = consumerAtom.deref();
-        if (consumerAtom === undefined) {
-          consumer._version++;
-          consumer._transmitAtom = undefined;
-          consumer._sourceTail = undefined;
-          consumer._scheduleCleaning();
-          break consumerHandler;
-        }
-      }
+      // if ("deref" in consumerAtom) {
+      //   consumerAtom = consumerAtom.deref();
+      //   if (consumerAtom === undefined) {
+      //     consumer._version++;
+      //     consumer._transmitAtom = undefined;
+      //     consumer._sourceTail = undefined;
+      //     consumer._scheduleCleaning();
+      //     break consumerHandler;
+      //   }
+      // }
 
       consumerAtom._flags |= ATOM_FLAG_DIRTY;
       emit(consumerAtom);
@@ -385,7 +365,8 @@ type AtomAccessor<TValue> = (read: Reader) => TValue;
 
 function receive<T>(receiveAtom: ReceiveAtom<T>) {
   const receiver = (receiveAtom._receiver ??= createReceiver(
-    new WeakRef(receiveAtom)
+    // new WeakRef(receiveAtom)
+    receiveAtom
   ));
   const deferFlag = receiveAtom._flags & ATOM_FLAG_DEFER;
   receiveAtom._flags = deferFlag | ATOM_FLAG_IN_RECEIVE;

@@ -272,7 +272,7 @@ function link(
   }
   const newLink =
     (sub.depsTail =
-    dep.subsTail =
+      dep.subsTail =
       {
         dep,
         sub,
@@ -320,6 +320,7 @@ export function read<T>(el: Signal<T> | Computed<T>): T {
         owner.height >= minDirty ||
         owner.flags & (ReactiveFlags.Dirty | ReactiveFlags.Check)
       ) {
+        // console.warn("Stabilize Fallback");
         // console.log("fallback hit s", owner.fn.name, owner.height);
         markHeap();
         updateIfNecessary(owner);
