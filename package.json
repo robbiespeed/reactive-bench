@@ -6,7 +6,7 @@
   "scripts": {
     "bench": "deno run --v8-flags=-expose_gc --allow-env --allow-read=./packages ./bench.js --gc",
     "bench-jitless": "deno run --v8-flags=--expose_gc,--jitless --allow-env --allow-read=./packages ./bench.js --gc",
-    "bench-debug": "deno run --v8-flags=-expose_gc --inspect-brk --allow-env --allow-read=./packages ./bench.js -m --gc",
+    "bench-debug": "deno run --v8-flags=--expose_gc --inspect-brk --allow-env --allow-read=./packages ./bench.js -m --gc",
     "bench:vitest": "vitest bench -c runners/vitest.config.ts --run",
     "bench:bun": "bun run ./bench.js --gc",
     "bench:node": "node --expose-gc ./bench.js --gc",

@@ -1,5 +1,5 @@
 import type { ProjectionFanInComponent } from "@reactive-bench/core/benchmarks/projection/fan-in.ts";
-import { Atom, clean, state, derive, compute, stabilize, AtomSubscriptionChannel } from "../lib.js";
+import { Atom, clean, state, compute, stabilize, AtomSubscriptionChannel } from "../lib.js";
 
 export const component: ProjectionFanInComponent = ({
   recordResult,
@@ -13,7 +13,7 @@ export const component: ProjectionFanInComponent = ({
     const [input] = state(i);
     fanInputs.push(input);
   }
-  const chainStart = derive(function cs(read) {
+  const chainStart = compute(function cs(read) {
     let v = read(head);
     for (let i = 0; i < fanSize; i++) {
       v += read(fanInputs[i]!);
@@ -29,7 +29,6 @@ export const component: ProjectionFanInComponent = ({
       const v = read(source);
       outputController.setState(v + d);
     });
-    projector.unwrap();
     outputController.setOwner(projector);
     depthChainOutputs.push(outputController.atom);
   }
@@ -50,7 +49,6 @@ export const component: ProjectionFanInComponent = ({
 
     fanOutputController.setState(v);
   });
-  outProjector.unwrap();
   fanOutputController.setOwner(outProjector);
   const fanOutput = fanOutputController.atom;
 

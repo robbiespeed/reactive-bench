@@ -52,11 +52,10 @@
       "runtimeArgs": [
         "run",
         "bench-debug",
-        "-f",
-        "projection (def",
         "-b",
-        "cellx (write row by row read all 10x50)",
-        "-m"
+        "one to many (deep",
+        // "cellx (write row by row read all 10x50)",
+        // "-m"
       ],
       "attachSimplePort": 9229
     }

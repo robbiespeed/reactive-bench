@@ -53,10 +53,10 @@ export interface TestSuiteItem {
 }
 
 const runOptions: BenchmarkRunOptions = {
-  // iterations: 20,
-  // time: 1000,
-  // warmupIterations: 10,
-  // warmupTime: 500,
+  // iterations: 2000,
+  // time: 0,
+  // warmupIterations: 0,
+  // warmupTime: 0,
 };
 
 export const benchmarkConfigs: BenchmarkConfig[] = [
@@ -169,30 +169,30 @@ export const benchmarkConfigs: BenchmarkConfig[] = [
     params: { size: 1000, writeCount: 5 } satisfies DiamondParams,
     runOptions,
   },
-  // {
-  //   name: "projection fan out (deep jump 20x1000)",
-  //   path: "@reactive-bench/core/benchmarks/projection/fan-out.ts",
-  //   key: "projectionFanOut",
-  //   componentPath: "projection/fan-out.ts",
-  //   params: { depthSize: 20, fanSize: 1000, writeCount: 10 } satisfies ProjectionFanOutParams,
-  //   runOptions,
-  // },
-  // {
-  //   name: "projection fan out (broad 2000)",
-  //   path: "@reactive-bench/core/benchmarks/projection/fan-out.ts",
-  //   key: "projectionFanOut",
-  //   componentPath: "projection/fan-out.ts",
-  //   params: { depthSize: 0, fanSize: 2000, writeCount: 10 } satisfies ProjectionFanOutParams,
-  //   runOptions,
-  // },
-  // {
-  //   name: "projection fan in (deep jump 20x1000)",
-  //   path: "@reactive-bench/core/benchmarks/projection/fan-in.ts",
-  //   key: "projectionFanIn",
-  //   componentPath: "projection/fan-in.ts",
-  //   params: { depthSize: 20, fanSize: 1000, writeCount: 10 } satisfies ProjectionFanOutParams,
-  //   runOptions,
-  // },
+  {
+    name: "projection fan out (deep jump 20x1000)",
+    path: "@reactive-bench/core/benchmarks/projection/fan-out.ts",
+    key: "projectionFanOut",
+    componentPath: "projection/fan-out.ts",
+    params: { depthSize: 20, fanSize: 1000, writeCount: 10 } satisfies ProjectionFanOutParams,
+    runOptions,
+  },
+  {
+    name: "projection fan out (broad 2000)",
+    path: "@reactive-bench/core/benchmarks/projection/fan-out.ts",
+    key: "projectionFanOut",
+    componentPath: "projection/fan-out.ts",
+    params: { depthSize: 0, fanSize: 2000, writeCount: 10 } satisfies ProjectionFanOutParams,
+    runOptions,
+  },
+  {
+    name: "projection fan in (deep jump 20x1000)",
+    path: "@reactive-bench/core/benchmarks/projection/fan-in.ts",
+    key: "projectionFanIn",
+    componentPath: "projection/fan-in.ts",
+    params: { depthSize: 20, fanSize: 1000, writeCount: 10 } satisfies ProjectionFanOutParams,
+    runOptions,
+  },
   // {
   //   name: "table (fill empty x10_000)",
   //   path: "@reactive-bench/core/benchmarks/table.ts",

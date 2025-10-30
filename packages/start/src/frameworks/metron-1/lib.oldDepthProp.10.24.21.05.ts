@@ -63,11 +63,9 @@ const ATOM_FLAG_CAN_HEAP = 8 << 1;
 const ATOM_FLAG_OWNED = 8 << 2;
 const ATOM_FLAG_HAS_ERROR = 8 << 3;
 const ATOM_FLAG_DIRTY = 8 << 4;
-const ATOM_FLAG_DIRTY_DEPTH = 8 << 5;
-const ATOM_FLAG_IN_RECEIVE = 8 << 6;
-const ATOM_FLAG_IN_FALLBACK = 8 << 7;
+const ATOM_FLAG_IN_RECEIVE = 8 << 5;
+const ATOM_FLAG_IN_FALLBACK = 8 << 6;
 
-const ATOM_FLAG_MAYBE_IN_HEAP = ATOM_FLAG_IN_RECEIVE | ATOM_FLAG_DIRTY | ATOM_FLAG_DIRTY_DEPTH;
 const ATOM_FLAG_NON_DIRTY = ATOM_FLAG_TYPE_SPACE | ATOM_FLAG_CAN_HEAP | ATOM_FLAG_OWNED | ATOM_FLAG_HAS_ERROR | ATOM_FLAG_IN_RECEIVE | ATOM_FLAG_IN_FALLBACK;
 const ATOM_FLAG_NON_FALLBACK = ATOM_FLAG_TYPE_SPACE | ATOM_FLAG_CAN_HEAP | ATOM_FLAG_OWNED | ATOM_FLAG_HAS_ERROR | ATOM_FLAG_DIRTY | ATOM_FLAG_IN_RECEIVE;
 
@@ -83,7 +81,6 @@ let createLink: (consumer: Relay, source: Atom) => undefined;
 let emit: (atom: Atom) => undefined;
 let setOwner: (atom: Atom, owner: Atom) => undefined;
 let initStateController: <TValue>(controller: AtomStateController<TValue>, atom: Atom<TValue>) => undefined;
-let receive: (atom: Atom) => undefined;
 let stabilize: () => undefined;
 let stabilizeRelay: (relay: Relay, atom: Atom) => undefined;
 let transmit: (atom: Atom) => undefined;
@@ -306,7 +303,7 @@ export class Atom<TValue = unknown> {
     // insertIntoHeap(atom);
     atom.#flags = ATOM_TYPE_COMPUTE | ATOM_FLAG_CAN_HEAP | ATOM_FLAG_DIRTY;
     heapCount++; // Because unwrap will reduce the count
-    receive(atom);
+    atom.unwrap();
     return atom;
   }
   static createDerivedController<TValue>() { }
@@ -345,7 +342,7 @@ export class Atom<TValue = unknown> {
     }
 
     let transmitStack: Link[] = [];
-    transmit = function (atom: Atom) {
+    transmit = function transmit(atom: Atom) {
       emit(atom);
 
       let link = atom.#consumerHead;
@@ -379,7 +376,6 @@ export class Atom<TValue = unknown> {
 
           if (consumerAtom.#flags & ATOM_FLAG_CAN_HEAP) {
             insertIntoHeap(consumerAtom);
-            consumerAtom.#flags |= ATOM_FLAG_DIRTY;
           } else {
             consumerAtom.#flags |= ATOM_FLAG_DIRTY;
             emit(consumerAtom);
@@ -398,7 +394,7 @@ export class Atom<TValue = unknown> {
       }
     }
 
-    createLink = function (consumer, source): undefined {
+    createLink = function createLink(consumer, source): undefined {
       const tail = consumer.sourceTail;
       let nextOld: Link | undefined;
       if (tail !== undefined) {
@@ -496,20 +492,18 @@ export class Atom<TValue = unknown> {
           if (consumerAtom.#flags & ATOM_FLAG_CAN_HEAP) {
             if (consumerRelay.depth <= depth) {
               consumerDepth = consumerRelay.depth = depth + 1;
-              insertIntoHeap(consumerAtom);
-              consumerAtom.#flags |= ATOM_FLAG_DIRTY_DEPTH;
             }
           } else if (consumerRelay.depth < depth) {
             consumerDepth = consumerRelay.depth = depth;
-            const childLinks = consumerAtom.#consumerHead;
-            if (childLinks !== undefined && consumerDepth >= 0) {
-              if (nextConsumerLink !== undefined) {
-                propagateDepthStack.push({ link: nextConsumerLink, depth });
-              }
-              depth = consumerDepth;
-              link = childLinks;
-              continue;
+          }
+          const childLinks = consumerAtom.#consumerHead;
+          if (childLinks !== undefined && consumerDepth >= 0) {
+            if (nextConsumerLink !== undefined) {
+              propagateDepthStack.push({ link: nextConsumerLink, depth });
             }
+            depth = consumerDepth;
+            link = childLinks;
+            continue;
           }
         }
 
@@ -524,7 +518,7 @@ export class Atom<TValue = unknown> {
       }
     }
 
-    receive = function (receiveAtom: Atom): undefined {
+    function receive(receiveAtom: Atom): undefined {
       const relay = (receiveAtom.#state as Relay);
       const nextFlags = receiveAtom.#flags & (ATOM_FLAG_TYPE_SPACE | ATOM_FLAG_CAN_HEAP);
       const canHeap = nextFlags & ATOM_FLAG_CAN_HEAP;
@@ -604,15 +598,17 @@ export class Atom<TValue = unknown> {
 
       try {
         if (canHeap) {
+          const isFirst = relay.reader === undefined;
           heapCount--;
           const prevDepth = relay.depth;
           relay.reader = read;
           const nextValue = relay.run.call(receiveAtom, read);
           if (relay.value !== nextValue) {
             relay.value = nextValue;
-            transmit(receiveAtom);
-          } else if (prevDepth < relay.depth) {
-            // TODO what if depth changes async?
+            if (isFirst) {
+              transmit(receiveAtom);
+            }
+          } else if (isFirst && prevDepth < relay.depth) {
             propagateDepth(receiveAtom);
           }
         } else {
@@ -688,8 +684,10 @@ export class Atom<TValue = unknown> {
     const stabilizeHeaps: (Atom[] | undefined)[] = new Array(200);
 
     insertIntoHeap = function insertIntoHeap(atom) {
-      if (atom.#flags & (ATOM_FLAG_MAYBE_IN_HEAP)) return;
+      const flags = atom.#flags;
+      if (flags & (ATOM_FLAG_DIRTY | ATOM_FLAG_IN_RECEIVE)) return;
       heapCount++;
+      atom.#flags = flags | ATOM_FLAG_DIRTY;
       const relay = atom.#state as Relay;
       const depth = relay.depth;
       (stabilizeHeaps[depth] ??= []).push(atom);
@@ -759,7 +757,7 @@ export class Atom<TValue = unknown> {
               link = next;
               continue;
             }
-            if (atom.#flags & ATOM_FLAG_DIRTY) {
+            if (atom.#flags & (ATOM_FLAG_DIRTY)) {
               receive(atom);
               moveToFallbackStack(atom);
               link = next;
@@ -815,16 +813,12 @@ export class Atom<TValue = unknown> {
           for (let i = 0; i < heap.length; i++) {
             atom = heap[i]!;
             const relay = atom.#state as Relay;
-            if (relay.depth === minHeap) {
-              if (atom.#flags & ATOM_FLAG_DIRTY) {
+            if (atom.#flags & ATOM_FLAG_DIRTY) {
+              if (relay.depth === minHeap) {
                 receive(atom);
-              } else if (atom.#flags & ATOM_FLAG_DIRTY_DEPTH) {
-                atom.#flags ^= ATOM_FLAG_DIRTY_DEPTH;
-                propagateDepth(atom);
-                heapCount--;
+              } else {
+                moveHeap(atom);
               }
-            } else {
-              moveHeap(atom);
             }
           }
           heap.length = 0;

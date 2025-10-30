@@ -39,3 +39,5 @@ await runBenchmarkSuite(frameworkConfigs, benchmarkConfigs, {
   runInWorker: !mainThread,
   shouldGC: gc,
 });
+
+console.log("DONE!");

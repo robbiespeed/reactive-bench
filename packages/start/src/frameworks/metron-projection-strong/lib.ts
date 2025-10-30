@@ -406,16 +406,21 @@ function receive<T>(receiveAtom: ReceiveAtom<T>) {
     }
     return atom._value;
   };
-  if (deferFlag) {
-    const prevValue = receiveAtom._value;
-    receiveAtom._value = receiveAtom._fn(read);
-    if (receiveAtom._value !== prevValue && version !== 0) {
-      transmit(receiveAtom);
+  try {
+    if (deferFlag) {
+      const prevValue = receiveAtom._value;
+      receiveAtom._value = receiveAtom._fn(read);
+      if (receiveAtom._value !== prevValue && version !== 0) {
+        transmit(receiveAtom);
+      }
+    } else {
+      receiveAtom._value = receiveAtom._fn(read);
     }
-  } else {
-    receiveAtom._value = receiveAtom._fn(read);
+  } catch (cause) {
+    return cause;
+  } finally {
+    receiveAtom._flags = deferFlag;
   }
-  receiveAtom._flags = deferFlag;
 }
 
 function disposeReceiver(atom: ReceiveAtom) {

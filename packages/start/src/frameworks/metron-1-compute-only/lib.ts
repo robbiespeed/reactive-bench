@@ -63,11 +63,9 @@ const ATOM_FLAG_CAN_HEAP = 8 << 1;
 const ATOM_FLAG_OWNED = 8 << 2;
 const ATOM_FLAG_HAS_ERROR = 8 << 3;
 const ATOM_FLAG_DIRTY = 8 << 4;
-const ATOM_FLAG_DIRTY_DEPTH = 8 << 5;
-const ATOM_FLAG_IN_RECEIVE = 8 << 6;
-const ATOM_FLAG_IN_FALLBACK = 8 << 7;
+const ATOM_FLAG_IN_RECEIVE = 8 << 5;
+const ATOM_FLAG_IN_FALLBACK = 8 << 6;
 
-const ATOM_FLAG_MAYBE_IN_HEAP = ATOM_FLAG_IN_RECEIVE | ATOM_FLAG_DIRTY | ATOM_FLAG_DIRTY_DEPTH;
 const ATOM_FLAG_NON_DIRTY = ATOM_FLAG_TYPE_SPACE | ATOM_FLAG_CAN_HEAP | ATOM_FLAG_OWNED | ATOM_FLAG_HAS_ERROR | ATOM_FLAG_IN_RECEIVE | ATOM_FLAG_IN_FALLBACK;
 const ATOM_FLAG_NON_FALLBACK = ATOM_FLAG_TYPE_SPACE | ATOM_FLAG_CAN_HEAP | ATOM_FLAG_OWNED | ATOM_FLAG_HAS_ERROR | ATOM_FLAG_DIRTY | ATOM_FLAG_IN_RECEIVE;
 
@@ -83,7 +81,6 @@ let createLink: (consumer: Relay, source: Atom) => undefined;
 let emit: (atom: Atom) => undefined;
 let setOwner: (atom: Atom, owner: Atom) => undefined;
 let initStateController: <TValue>(controller: AtomStateController<TValue>, atom: Atom<TValue>) => undefined;
-let receive: (atom: Atom) => undefined;
 let stabilize: () => undefined;
 let stabilizeRelay: (relay: Relay, atom: Atom) => undefined;
 let transmit: (atom: Atom) => undefined;
@@ -234,7 +231,6 @@ export class Atom<TValue = unknown> {
         throw new Error("Cannot unwrap destroyed Atom");
       case ATOM_TYPE_STATE:
         return this.#state as TValue;
-      case ATOM_TYPE_DERIVE:
       case ATOM_TYPE_COMPUTE: {
         // TODO check ATOM_FLAG_IN_RECEIVE and throw
         const relay = this.#state as Relay<TValue>;
@@ -244,6 +240,7 @@ export class Atom<TValue = unknown> {
         }
         return relay.value!;
       }
+      case ATOM_TYPE_DERIVE:
       case ATOM_TYPE_FROZEN:
       case ATOM_TYPE_DERIVE_STATIC:
       case ATOM_TYPE_COMPUTE_STATIC:
@@ -265,23 +262,6 @@ export class Atom<TValue = unknown> {
     initStateController(controller, atom);
     return controller;
   }
-  static createDerived<TValue>(deriver: (read: Reader) => TValue): Atom<TValue>
-  static createDerived(deriver: (read: Reader) => undefined): Atom<undefined>
-  static createDerived<TValue>(deriver: (read: Reader) => TValue) {
-    const atom = new (this as unknown as AtomConstructor)<TValue>();
-    atom.#state = {
-      depth: -1,
-      nextDirty: undefined,
-      sourceHead: undefined,
-      sourceTail: undefined,
-      reader: undefined,
-      run: deriver,
-      transmitAtom: new WeakRef(atom),
-      value: undefined,
-    } as Relay<TValue>;
-    atom.#flags = ATOM_TYPE_DERIVE | ATOM_FLAG_DIRTY;
-    return atom;
-  }
   static createComputed(computation: (this: Atom<never>, read: Reader) => undefined): Atom<undefined>
   static createComputed<TValue>(computation: (this: Atom<never>, read: Reader) => TValue): Atom<TValue>
   static createComputed<TValue>(computation: (this: Atom<never>, read: Reader) => TValue) {
@@ -302,14 +282,11 @@ export class Atom<TValue = unknown> {
     // the computed aren't available right away, so either manual eager computed.unwrap() or
     // restructuring to initialize children outside the computed is required
     // Could be an option defaulting to eager?
-    // atom.#flags = ATOM_TYPE_COMPUTE | ATOM_FLAG_CAN_HEAP;
-    // insertIntoHeap(atom);
     atom.#flags = ATOM_TYPE_COMPUTE | ATOM_FLAG_CAN_HEAP | ATOM_FLAG_DIRTY;
     heapCount++; // Because unwrap will reduce the count
-    receive(atom);
+    atom.unwrap();
     return atom;
   }
-  static createDerivedController<TValue>() { }
   static {
     setOwner = function (atom, owner) {
       if ((owner.#flags & ATOM_FLAG_CAN_HEAP) === 0) {
@@ -345,7 +322,7 @@ export class Atom<TValue = unknown> {
     }
 
     let transmitStack: Link[] = [];
-    transmit = function (atom: Atom) {
+    transmit = function transmit(atom: Atom) {
       emit(atom);
 
       let link = atom.#consumerHead;
@@ -376,29 +353,14 @@ export class Atom<TValue = unknown> {
           consumer.sourceTail = undefined;
           consumer.reader = undefined;
           scheduleRelayCleaning(consumer);
-
-          if (consumerAtom.#flags & ATOM_FLAG_CAN_HEAP) {
-            insertIntoHeap(consumerAtom);
-            consumerAtom.#flags |= ATOM_FLAG_DIRTY;
-          } else {
-            consumerAtom.#flags |= ATOM_FLAG_DIRTY;
-            emit(consumerAtom);
-            const childLinks = consumerAtom.#consumerHead;
-            if (childLinks !== undefined) {
-              if (nextConsumerLink !== undefined) {
-                transmitStack.push(nextConsumerLink);
-              }
-              link = childLinks;
-              continue;
-            }
-          }
+          insertIntoHeap(consumerAtom);
         }
 
         link = nextConsumerLink ?? transmitStack.pop();
       }
     }
 
-    createLink = function (consumer, source): undefined {
+    createLink = function createLink(consumer, source): undefined {
       const tail = consumer.sourceTail;
       let nextOld: Link | undefined;
       if (tail !== undefined) {
@@ -496,20 +458,18 @@ export class Atom<TValue = unknown> {
           if (consumerAtom.#flags & ATOM_FLAG_CAN_HEAP) {
             if (consumerRelay.depth <= depth) {
               consumerDepth = consumerRelay.depth = depth + 1;
-              insertIntoHeap(consumerAtom);
-              consumerAtom.#flags |= ATOM_FLAG_DIRTY_DEPTH;
             }
           } else if (consumerRelay.depth < depth) {
             consumerDepth = consumerRelay.depth = depth;
-            const childLinks = consumerAtom.#consumerHead;
-            if (childLinks !== undefined && consumerDepth >= 0) {
-              if (nextConsumerLink !== undefined) {
-                propagateDepthStack.push({ link: nextConsumerLink, depth });
-              }
-              depth = consumerDepth;
-              link = childLinks;
-              continue;
+          }
+          const childLinks = consumerAtom.#consumerHead;
+          if (childLinks !== undefined && consumerDepth >= 0) {
+            if (nextConsumerLink !== undefined) {
+              propagateDepthStack.push({ link: nextConsumerLink, depth });
             }
+            depth = consumerDepth;
+            link = childLinks;
+            continue;
           }
         }
 
@@ -524,10 +484,9 @@ export class Atom<TValue = unknown> {
       }
     }
 
-    receive = function (receiveAtom: Atom): undefined {
+    function receive(receiveAtom: Atom): undefined {
       const relay = (receiveAtom.#state as Relay);
       const nextFlags = receiveAtom.#flags & (ATOM_FLAG_TYPE_SPACE | ATOM_FLAG_CAN_HEAP);
-      const canHeap = nextFlags & ATOM_FLAG_CAN_HEAP;
       receiveAtom.#flags = nextFlags | ATOM_FLAG_IN_RECEIVE;
 
       const read: Reader = <TValue>(atom: Atom<TValue>): TValue => {
@@ -559,12 +518,8 @@ export class Atom<TValue = unknown> {
             throw error;
           }
 
-          if (canHeap) {
-            if (relay.depth <= ownerRelay.depth) {
-              relay.depth = ownerRelay.depth + 1;
-            }
-          } else if (relay.depth < ownerRelay.depth) {
-            relay.depth = ownerRelay.depth;
+          if (relay.depth <= ownerRelay.depth) {
+            relay.depth = ownerRelay.depth + 1;
           }
         }
         switch (atom.#flags & ATOM_FLAG_TYPE_SPACE) {
@@ -585,12 +540,8 @@ export class Atom<TValue = unknown> {
             if (error) {
               throw error;
             }
-            if (canHeap) {
-              if (relay.depth <= atomRelay.depth) {
-                relay.depth = atomRelay.depth + 1;
-              }
-            } else if (relay.depth < atomRelay.depth) {
-              relay.depth = atomRelay.depth;
+            if (relay.depth <= atomRelay.depth) {
+              relay.depth = atomRelay.depth + 1;
             }
             return atomRelay.value!;
           }
@@ -603,29 +554,24 @@ export class Atom<TValue = unknown> {
       };
 
       try {
-        if (canHeap) {
-          heapCount--;
-          const prevDepth = relay.depth;
-          relay.reader = read;
-          const nextValue = relay.run.call(receiveAtom, read);
-          if (relay.value !== nextValue) {
-            relay.value = nextValue;
+        const isFirst = relay.reader === undefined;
+        heapCount--;
+        const prevDepth = relay.depth;
+        relay.reader = read;
+        const nextValue = relay.run.call(receiveAtom, read);
+        if (relay.value !== nextValue) {
+          relay.value = nextValue;
+          if (isFirst) {
             transmit(receiveAtom);
-          } else if (prevDepth < relay.depth) {
-            // TODO what if depth changes async?
-            propagateDepth(receiveAtom);
           }
-        } else {
-          relay.reader = read;
-          relay.value = relay.run.call(receiveAtom, read);
+        } else if (isFirst && prevDepth < relay.depth) {
+          propagateDepth(receiveAtom);
         }
         receiveAtom.#flags = nextFlags;
       } catch (cause) {
         relay.value = cause;
         receiveAtom.#flags = nextFlags | ATOM_FLAG_HAS_ERROR;
-        if (canHeap) {
-          transmit(receiveAtom);
-        }
+        transmit(receiveAtom);
       }
     }
 
@@ -688,8 +634,10 @@ export class Atom<TValue = unknown> {
     const stabilizeHeaps: (Atom[] | undefined)[] = new Array(200);
 
     insertIntoHeap = function insertIntoHeap(atom) {
-      if (atom.#flags & (ATOM_FLAG_MAYBE_IN_HEAP)) return;
+      const flags = atom.#flags;
+      if (flags & (ATOM_FLAG_DIRTY | ATOM_FLAG_IN_RECEIVE)) return;
       heapCount++;
+      atom.#flags = flags | ATOM_FLAG_DIRTY;
       const relay = atom.#state as Relay;
       const depth = relay.depth;
       (stabilizeHeaps[depth] ??= []).push(atom);
@@ -759,7 +707,7 @@ export class Atom<TValue = unknown> {
               link = next;
               continue;
             }
-            if (atom.#flags & ATOM_FLAG_DIRTY) {
+            if (atom.#flags & (ATOM_FLAG_DIRTY)) {
               receive(atom);
               moveToFallbackStack(atom);
               link = next;
@@ -815,16 +763,12 @@ export class Atom<TValue = unknown> {
           for (let i = 0; i < heap.length; i++) {
             atom = heap[i]!;
             const relay = atom.#state as Relay;
-            if (relay.depth === minHeap) {
-              if (atom.#flags & ATOM_FLAG_DIRTY) {
+            if (atom.#flags & ATOM_FLAG_DIRTY) {
+              if (relay.depth === minHeap) {
                 receive(atom);
-              } else if (atom.#flags & ATOM_FLAG_DIRTY_DEPTH) {
-                atom.#flags ^= ATOM_FLAG_DIRTY_DEPTH;
-                propagateDepth(atom);
-                heapCount--;
+              } else {
+                moveHeap(atom);
               }
-            } else {
-              moveHeap(atom);
             }
           }
           heap.length = 0;
@@ -930,61 +874,4 @@ export function clean() {
 export { stabilize };
 
 export const state = Atom.createStateWithSetter.bind(Atom);
-export const derive = Atom.createDerived.bind(Atom);
 export const compute = Atom.createComputed.bind(Atom);
-
-
-// TODO can this be replaced with derived collections?
-
-// TODO would a WeakAtomStateController be useful?
-// It could simplify these kinds of collection item atoms (select, set.has(v), array.at(i), map.get(key))
-// Alternatively a Ref type Atom (with static link to parent) would allow similar easy setup,
-// and future hard source -> consumer links when leafs are subscribed
-// a regular static derived would also work but take up more memory
-
-export function selector<TKey>(input: Atom<TKey>): (key: TKey) => Atom<boolean> {
-  const controllers = new WeakMap<Atom, AtomStateController<boolean>>();
-  const atomRefs = new Map<TKey, WeakRef<Atom<boolean>>>();
-  let activeKey: TKey | undefined;
-
-  const projector = compute((read) => {
-    const nextKey = read(input);
-    if (activeKey !== nextKey) {
-      controllers.get(atomRefs.get(activeKey!)?.deref()!)?.setState(false);
-      controllers.get(atomRefs.get(nextKey)?.deref()!)?.setState(true);
-      activeKey = nextKey;
-    }
-  });
-
-  const finalizer = new FinalizationRegistry<TKey>((key) => {
-    atomRefs.delete(key);
-  });
-
-  const select = (key: TKey): Atom<boolean> => {
-    let atomRef = atomRefs.get(key);
-    let atom = atomRef?.deref();
-    if (atom === undefined) {
-      if (atomRef) {
-        finalizer.unregister(atomRef);
-      }
-      const controller = Atom.createStateController(key === activeKey);
-      controller.setOwner(projector);
-      atom = controller.atom;
-      atomRef = new WeakRef(atom);
-      controllers.set(atom, controller);
-      atomRefs.set(key, atomRef);
-      finalizer.register(atom, key, atomRef);
-      return atom;
-    }
-
-    return atom;
-  };
-
-  return select;
-}
-
-
-// TODO how to deal with nested collections? Ex: AtomArray<AtomArray<number>>
-// If one does `outer.at(0)` that is a wrapper around the inner array of type Atom<AtomArray<number>>
-// how would one use the inner array inside a map operation, or otherwise gain access to it's ChangeStore?
-// Maybe `(read) => read(outer.at(0)).map((v) => v * 2)`?

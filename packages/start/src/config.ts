@@ -7,10 +7,10 @@ import {
 const fwPrefix = "@reactive-bench/start/frameworks";
 
 export const frameworkConfigs: FrameworkConfig[] = [
-  {
-    name: "js-raw",
-    path: `${fwPrefix}/js-raw`,
-  },
+  // {
+  //   name: "js-raw",
+  //   path: `${fwPrefix}/js-raw`,
+  // },
   // {
   //   name: "metron-a",
   //   path: `${fwPrefix}/metron-a`,
@@ -65,10 +65,11 @@ export const frameworkConfigs: FrameworkConfig[] = [
   //   path: `${fwPrefix}/metron-zzyyx`,
   //   componentKey: "mapManaged",
   // },
-  {
-    name: "metron-zzyyxl",
-    path: `${fwPrefix}/metron-zzyyxl`,
-  },
+  // -- Pre depth --
+  // {
+  //   name: "metron-zzyyxl",
+  //   path: `${fwPrefix}/metron-zzyyxl`,
+  // },
   // {
   //   name: "metron-zzyyxl (managed)",
   //   path: `${fwPrefix}/metron-zzyyxl`,
@@ -112,13 +113,22 @@ export const frameworkConfigs: FrameworkConfig[] = [
     name: "metron-projection",
     path: `${fwPrefix}/metron-projection`,
   },
-  {
-    name: "metron-projection-strong",
-    path: `${fwPrefix}/metron-projection-strong`,
-  },
+  // {
+  //   name: "metron-projection-strong",
+  //   path: `${fwPrefix}/metron-projection-strong`,
+  // },
   {
     name: "metron-v1",
     path: `${fwPrefix}/metron-1`,
+  },
+  {
+    name: "metron-v1 (computed)",
+    path: `${fwPrefix}/metron-1`,
+    componentKey: "computed",
+  },
+  {
+    name: "metron-v1-compute-only",
+    path: `${fwPrefix}/metron-1-compute-only`,
   },
   // {
   //   name: "metron projection (deferred)",
@@ -138,18 +148,18 @@ export const frameworkConfigs: FrameworkConfig[] = [
   //   name: "r3-r",
   //   path: `${fwPrefix}/r3-r`,
   // },
-  {
-    name: "r3-lazy",
-    path: `${fwPrefix}/r3-lazy`,
-  },
+  // {
+  //   name: "r3-lazy",
+  //   path: `${fwPrefix}/r3-lazy`,
+  // },
   // {
   //   name: "r3-lazy-array-heaps",
   //   path: `${fwPrefix}/r3-lazy-array-heaps`,
   // },
-  {
-    name: "toy-hooks",
-    path: `${fwPrefix}/toy-hooks`,
-  },
+  // {
+  //   name: "toy-hooks",
+  //   path: `${fwPrefix}/toy-hooks`,
+  // },
   // {
   //   name: "metron",
   //   path: `${fwPrefix}/metron`,

@@ -141,8 +141,10 @@ export async function runBenchmark<
       tEnd = performance.now() + time;
       warmupResults = results;
       results = [];
+      // console.profile("Task");
     }
   }
+  // console.profileEnd("Task");
   return {
     results,
     warmupResults: warmupResults ?? [],
@@ -260,6 +262,8 @@ async function runMain(
 export interface RunBenchmarkSuiteOptions {
   benchmarkFilter?: (name: string) => boolean;
   frameworkFilter?: (name: string) => boolean;
+  sampleCount?: number,
+  warmupCount?: number,
   verbose?: boolean;
   runInWorker?: boolean;
   shouldGC?: boolean;
