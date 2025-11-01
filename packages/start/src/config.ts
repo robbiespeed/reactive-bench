@@ -101,18 +101,18 @@ export const frameworkConfigs: FrameworkConfig[] = [
   //   componentKey: "managed",
   // },
   // {
-  //   name: "alien-signals",
+  //   name: "alien-signals (eager)",
   //   path: `${fwPrefix}/alien-signals`,
   //   componentKey: "eager",
   // },
   {
-    name: "alien-signals (deferred)",
+    name: "alien-signals",
     path: `${fwPrefix}/alien-signals`,
   },
-  {
-    name: "metron-projection",
-    path: `${fwPrefix}/metron-projection`,
-  },
+  // {
+  //   name: "metron-projection",
+  //   path: `${fwPrefix}/metron-projection`,
+  // },
   // {
   //   name: "metron-projection-strong",
   //   path: `${fwPrefix}/metron-projection-strong`,

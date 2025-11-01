@@ -8,7 +8,7 @@ export const enum ReactiveFlags {
   Dirty = 1 << 1,
   RecomputingDeps = 1 << 2,
   InHeap = 1 << 3,
-  AdjustChildrenHeight = 1 << 4,
+  InHeapHeight = 1 << 4,
 }
 
 export interface Link {
@@ -62,14 +62,14 @@ let context: Computed<unknown> | null = null;
 
 let minDirty = 0;
 let maxDirty = 0;
-const dirtyHeap: (Computed<unknown> | undefined)[] = new Array(2000).fill(undefined);
+const dirtyHeap: (Computed<unknown> | undefined)[] = new Array(2000);
 export function increaseHeapSize(n: number) {
   if (n > dirtyHeap.length) {
     dirtyHeap.length = n;
   }
 }
 
-function actualInsertIntoHeap(n: Computed<unknown>) {
+function actualInsertIntoHeap(n: Computed<unknown>, f: number) {
   const height = n.height;
   const heapAtHeight = dirtyHeap[height];
   if (heapAtHeight === undefined) {
@@ -86,41 +86,40 @@ function actualInsertIntoHeap(n: Computed<unknown>) {
 }
 function insertIntoHeap(n: Computed<unknown>) {
   let flags = n.flags;
-  if (flags & (ReactiveFlags.InHeap | ReactiveFlags.RecomputingDeps)) return;
+  if (
+    flags &
+    (ReactiveFlags.InHeap |
+      ReactiveFlags.RecomputingDeps)
+  )
+    return;
   if (flags & ReactiveFlags.Check) {
-    n.flags =
+    flags =
       (flags & ~(ReactiveFlags.Check | ReactiveFlags.Dirty)) |
-      ReactiveFlags.Dirty |
-      ReactiveFlags.InHeap;
-  } else n.flags = flags | ReactiveFlags.InHeap;
-  if (!(flags & ReactiveFlags.AdjustChildrenHeight)) {
-    actualInsertIntoHeap(n);
+      ReactiveFlags.Dirty;
+  }
+  n.flags = flags | ReactiveFlags.InHeap;
+  if (!(flags & ReactiveFlags.InHeapHeight)) {
+    actualInsertIntoHeap(n, flags);
   }
 }
 
-function insertIntoHeapHeight(n: Computed<unknown>, newHeight: number) {
-  if (newHeight < n.height) {
-    return;
-  }
-  n.height = newHeight + 1;
+function insertIntoHeapHeight(n: Computed<unknown>) {
   let flags = n.flags;
   if (
     flags &
     (ReactiveFlags.InHeap |
       ReactiveFlags.RecomputingDeps |
-      ReactiveFlags.AdjustChildrenHeight)
+      ReactiveFlags.InHeapHeight)
   )
     return;
-  n.flags = flags | ReactiveFlags.AdjustChildrenHeight;
-  actualInsertIntoHeap(n);
+  n.flags = flags | ReactiveFlags.InHeapHeight;
+  actualInsertIntoHeap(n, flags);
 }
 
 function deleteFromHeap(n: Computed<unknown>) {
   const flags = n.flags;
-  if (!(flags & (ReactiveFlags.InHeap | ReactiveFlags.AdjustChildrenHeight)))
-    return;
-  n.flags =
-    flags & ~(ReactiveFlags.InHeap | ReactiveFlags.AdjustChildrenHeight);
+  if (!(flags & (ReactiveFlags.InHeap | ReactiveFlags.InHeapHeight))) return;
+  n.flags = flags & ~(ReactiveFlags.InHeap | ReactiveFlags.InHeapHeight);
   const height = n.height;
   if (n.prevHeap === n) {
     dirtyHeap[height] = undefined;
@@ -302,25 +301,17 @@ function recompute(el: Computed<unknown>) {
     }
   }
 
-  const newHeight = el.height;
-  const heightChanged = newHeight != oldHeight;
   if (value !== el.value) {
     el.value = value;
+
     for (let s = el.subs; s !== null; s = s.nextSub) {
       insertIntoHeap(s.sub);
     }
-  } else if (heightChanged) {
+  } else if (el.height != oldHeight) {
     for (let s = el.subs; s !== null; s = s.nextSub) {
-      insertIntoHeapHeight(s.sub, newHeight);
+      insertIntoHeapHeight(s.sub);
     }
   }
-  // if (heightChanged) {
-  //   for (let c = el.child; c !== null; c = c.nextChild) {
-  //     for (let s = c.subs; s !== null; s = s.nextSub) {
-  //       insertIntoHeapHeight(s.sub, newHeight);
-  //     }
-  //   }
-  // }
 }
 
 function updateIfNecessary(el: Computed<unknown>): void {
@@ -440,7 +431,6 @@ export function read<T>(
     const owner = "owner" in el ? el.owner : el;
     if ("fn" in owner) {
       if (owner.height >= minDirty) {
-        markNode(c);
         markHeap();
         updateIfNecessary(owner);
       }
@@ -496,9 +486,21 @@ function markHeap() {
 
 function adjustHeight(el: Computed<unknown>) {
   deleteFromHeap(el);
-  const height = el.height;
-  for (let s = el.subs; s !== null; s = s.nextSub) {
-    insertIntoHeapHeight(s.sub, height);
+  let newHeight = el.height;
+  for (let d = el.deps; d; d = d.nextDep) {
+    const dep1 = d.dep;
+    const dep = ("owner" in dep1 ? dep1.owner : dep1) as Computed<unknown>;
+    if ("fn" in dep) {
+      if (dep.height >= newHeight) {
+        newHeight = dep.height + 1;
+      }
+    }
+  }
+  if (el.height !== newHeight) {
+    el.height = newHeight;
+    for (let s = el.subs; s !== null; s = s.nextSub) {
+      insertIntoHeapHeight(s.sub);
+    }
   }
 }
 
@@ -514,7 +516,6 @@ export function stabilize() {
       el = dirtyHeap[minDirty];
     }
   }
-  maxDirty = 0;
 }
 
 export function onCleanup(fn: Disposable): Disposable {
@@ -560,8 +561,8 @@ function runDisposal(node: Owner): void {
 
   if (Array.isArray(node.disposal)) {
     for (let i = 0; i < node.disposal.length; i++) {
-      const callable = node.disposal[i]!;
-      callable.call(callable);
+      const callable = node.disposal[i];
+      callable!.call(callable);
     }
   } else {
     node.disposal.call(node.disposal);
